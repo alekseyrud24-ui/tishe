@@ -2,6 +2,7 @@
 <html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8">
+  <meta name="referrer" content="no-referrer">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <title>Тише — читать и слушать</title>
   <style>
@@ -2885,11 +2886,11 @@ button, select, input, textarea { font-family: var(--font-sans); }
     const google=googleSelected(),edge=edgeSelected(),direct=directSelected(),v=chooseVoice(),remote=bridgeVoices.find(v=>'edge:'+v.id===settings.voice);
     $('rangePitch').disabled=google;
     $('rangePitch').title=google?'Для MP3 независимое изменение высоты тона недоступно':'Высота тона выбранного голоса';
-    $('lblPitch').textContent=google?'Только системный голос':settings.pitch.toFixed(2);
+    $('lblPitch').textContent=google?'Недоступно для MP3':settings.pitch.toFixed(2);
     $('rangePauseMs').disabled=false;
     $('lblPauseMs').textContent=settings.pauseMs+' мс';
     $('metaEngineBadge').textContent=direct?'MICROSOFT · НАПРЯМУЮ':edge?'MICROSOFT · ГОЛОСОВОЙ МОСТ':google?'GOOGLE · СЕТЕВОЙ MP3':nativeEdgeId(v)?'MICROSOFT EDGE · БЕЗ МОСТА':'ГОЛОС УСТРОЙСТВА';
-    $('sourceHint').textContent=direct?'Microsoft · '+(microsoftVoices.find(v=>v.id===directVoiceId())?.name||'выбранный голос')+' · прямой сетевой синтез, без EXE и компьютера-посредника. Текст передаётся только Microsoft. Нужен Edge и интернет; другой голос при ошибке не включается.':edge?remote?'Microsoft · '+remote.name+' · через локальный мост. Текст для озвучки отправляется Microsoft. Голос при ошибке не подменяется.':bridgeState==='loading'?'Подключаю голосовой мост…':bridgeError||'Для сохранённого голоса моста нет подключения. Выбери прямое подключение Microsoft Online.':google?'Экспериментальный сетевой MP3 · '+(selectedLanguage()==='en'?'English':'русский')+': фразы передаются Google, доступность зависит от сервиса. '+(ios?'На iPhone системный голос вместо Google не включается. Если звук заблокирован, запись сохраняется до повторного нажатия ▶.':'При недоступности — голос устройства того же языка с явным указанием источника.'):v?'Выбран: '+v.name+(nativeEdgeId(v)?' · напрямую через Edge, без EXE и отдельного моста. Нужен интернет; текст передаётся Microsoft.':v.localService?' · локальный, без передачи текста в сеть.':' · сетевой голос браузера, требует интернета.'):'Выбранный браузерный голос не обнаружен. Обнови список в настройках звука. Отдельное сетевое подключение Microsoft не означает доступность голоса через браузерный API.';
+    $('sourceHint').textContent=direct?'Microsoft · '+(microsoftVoices.find(v=>v.id===directVoiceId())?.name||'выбранный голос')+' · прямой сетевой синтез, без EXE и компьютера-посредника. Текст передаётся только Microsoft. Нужен Edge и интернет; другой голос при ошибке не включается.':edge?remote?'Microsoft · '+remote.name+' · через локальный мост. Текст для озвучки отправляется Microsoft. Голос при ошибке не подменяется.':bridgeState==='loading'?'Подключаю голосовой мост…':bridgeError||'Для сохранённого голоса моста нет подключения. Выбери прямое подключение Microsoft Online.':google?'Экспериментальный сетевой MP3 · '+(selectedLanguage()==='en'?'English':'русский')+': фразы передаются Google, доступность зависит от сервиса. Системный голос вместо Google не включается. Лимит — 180 символов на предложение. Если звук заблокирован, запись сохраняется до повторного нажатия ▶.':v?'Выбран: '+v.name+(nativeEdgeId(v)?' · напрямую через Edge, без EXE и отдельного моста. Нужен интернет; текст передаётся Microsoft.':v.localService?' · локальный, без передачи текста в сеть.':' · сетевой голос браузера, требует интернета.'):'Выбранный браузерный голос не обнаружен. Обнови список в настройках звука. Отдельное сетевое подключение Microsoft не означает доступность голоса через браузерный API.';
     $('deckSlotA').textContent=google?'ДЕКА A':'РЕЧЬ';$('deckSlotB').textContent=google?'ДЕКА B':'СИНТЕЗ';
     $('deckSlotA').classList.toggle('active-deck',!google||deck===0);$('deckSlotB').classList.toggle('active-deck',google&&deck===1);
   }
@@ -3000,7 +3001,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
   function audioFallback(j,message) {
     if(j!==job||j.dead||j.fallback)return;
     if(directSelected()||edgeSelected()||['edge','microsoft-direct'].includes(j.source?.engine)){fail(j,message+' Голос Microsoft не заменён другим.');return;}
-    if(ios&&googleSelected()){fail(j,message+' Google не заменён системным голосом.');return;}
+    if(googleSelected()){fail(j,message+' Google не заменён системным голосом.');return;}
     j.fallback=true;clearTimeout(j.watchdog);clearInterval(j.trimTimer);
     if(j.audio){j.audio.onended=j.audio.onerror=j.audio.onloadedmetadata=null;j.audio.pause();j.audio=null;}
     cloudDeadUntil=Date.now()+60000;
@@ -3058,11 +3059,9 @@ button, select, input, textarea { font-family: var(--font-sans); }
     const j={id:generation,type:'loading',dead:false};job=j;
     highlight();persist();
     if(googleSelected()&&segments[index].text.length>MAX_CHUNK) {
-      if(ios){fail(j,'[GOOGLE-LENGTH] Предложение длиннее ограничения этого режима Google MP3 (180 символов). Для этого предложения выбери Дмитрия или Светлану; системный голос не включён.');return;}
-      sourceWarning='Длинное предложение читается целиком голосом устройства: '+(chooseVoice()?.name||'голос нужного языка недоступен')+'. Сетевой MP3 ограничивает длину текста.';
-      speakNative(j,segments[index].text);return;
+      fail(j,'[GOOGLE-LENGTH] Предложение длиннее ограничения этого режима Google MP3 (180 символов). Раздели предложение или выбери другой источник; системный голос не включён.');return;
     }
-    if(!directSelected()&&!edgeSelected()&&(!googleSelected()||cloudDeadUntil>Date.now())) {speakNative(j,segments[index].text);return;}
+    if(!networkSelected()) {speakNative(j,segments[index].text);return;}
     status('LOADING');armWatchdog(j,directSelected()||edgeSelected()?98000:8000);
     getNetworkAudio(segments[index].text).then(source=>{
       if(j!==job||j.dead||j.id!==generation||j.fallback)return;
@@ -3233,8 +3232,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
       const label=source.label||'Google MP3';
       const failed=error=>{
         if(preview!==p||p.dead)return;
-        if(ios||!googleSelected())end(mediaErrorMessage(a,source,error)+' Голос не заменён.',true);
-        else native();
+        end(mediaErrorMessage(a,source,error)+' Голос не заменён.',true);
       };
       a.onended=()=>end('Проба завершена · '+label);a.onerror=()=>failed();
       p.retry=()=>{
@@ -3269,7 +3267,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
     try {
       const source=await getCloud(text);if(preview!==p||p.dead)return;
       playNetworkPreview(source);
-    }catch(error){if(preview===p&&!p.dead){if(ios)end('[GOOGLE-LOAD] '+error.message+' Голос не заменён.',true);else native();}}
+    }catch(error){if(preview===p&&!p.dead)end('[GOOGLE-LOAD] '+error.message+' Голос не заменён.',true);}
   }
   function setupMediaSession() {
     if(!navigator.mediaSession)return;

@@ -1,0 +1,3320 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <title>Тише — читать и слушать</title>
+  <style>
+    /* ==========================================================================
+       1. СЕМАНТИЧЕСКАЯ ТРЁХТЕМНАЯ ПАЛИТРА И ГЛОБАЛЬНЫЕ ТОКЕНЫ
+       ========================================================================== */
+    :root,
+    [data-theme="dark"] {
+      --bg-canvas: #0B0C0E;
+      --bg-sheet: #121418;
+      --bg-elevated: #1A1D24;
+      --bg-glass-dock: rgba(18, 20, 24, 0.84);
+      --text-primary: #ECE7DF;
+      --text-secondary: #8E95A5;
+      --accent-amber: #D99B52;
+      --accent-glow: rgba(217, 155, 82, 0.14);
+      --status-live: #5EBA8D;
+      --status-danger: #D96B66;
+      --border-hairline: rgba(236, 231, 223, 0.08);
+      --border-specular: rgba(255, 255, 255, 0.06);
+      --shadow-hardware: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 20px 50px rgba(0, 0, 0, 0.65);
+      --shadow-sheet: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 24px 60px rgba(0, 0, 0, 0.55);
+      --backdrop-overlay: rgba(6, 7, 9, 0.68);
+    }
+
+    [data-theme="light"] {
+      --bg-canvas: #EFECE6;
+      --bg-sheet: #FAF7F0;
+      --bg-elevated: #E5E0D5;
+      --bg-glass-dock: rgba(250, 247, 240, 0.86);
+      --text-primary: #18181A;
+      --text-secondary: #63666E;
+      --accent-amber: #9E6324;
+      --accent-glow: rgba(158, 99, 36, 0.11);
+      --status-live: #237852;
+      --status-danger: #B83A35;
+      --border-hairline: rgba(24, 24, 26, 0.09);
+      --border-specular: rgba(255, 255, 255, 0.65);
+      --shadow-hardware: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 18px 44px rgba(24, 24, 26, 0.14);
+      --shadow-sheet: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 14px 36px rgba(24, 24, 26, 0.08);
+      --backdrop-overlay: rgba(24, 24, 26, 0.36);
+    }
+
+    [data-theme="oled"] {
+      --bg-canvas: #000000;
+      --bg-sheet: #040404;
+      --bg-elevated: #0D0E11;
+      --bg-glass-dock: rgba(8, 8, 10, 0.94);
+      --text-primary: #D8D4CD;
+      --text-secondary: #737373;
+      --accent-amber: #D99B52;
+      --accent-glow: rgba(217, 155, 82, 0.18);
+      --status-live: #4FA87C;
+      --status-danger: #D96B66;
+      --border-hairline: rgba(255, 255, 255, 0.11);
+      --border-specular: rgba(255, 255, 255, 0.05);
+      --shadow-hardware: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 24px 60px rgba(0, 0, 0, 0.95);
+      --shadow-sheet: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 0 1px rgba(255, 255, 255, 0.04);
+      --backdrop-overlay: rgba(0, 0, 0, 0.84);
+    }
+
+    :root {
+      --font-serif: 'Newsreader', 'Cormorant Garamond', Georgia, serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --reader-font-size: 21px;
+      --reader-line-height: 1.8;
+      --sheet-max-width: 780px;
+      --layout-top-pad: 96px;
+      --layout-bottom-pad: 184px;
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-tactile: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100vh;
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+      transition: background-color 320ms var(--ease-out-expo), color 320ms var(--ease-out-expo);
+    }
+
+    ::selection {
+      background: var(--accent-glow);
+      color: var(--accent-amber);
+    }
+
+    /* Скрытый SVG-контейнер для фильтров и спрайтов */
+    .svg-defs-vault {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    /* Универсальная типографика и табличные числа */
+    .mono-tabular {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+
+    .section-eyebrow {
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    /* ==========================================================================
+       2. АППАРАТНЫЕ КНОПКИ, СЕЛЕКТОРЫ И ТАКТИЛЬНЫЕ ЭЛЕМЕНТЫ УПРАВЛЕНИЯ
+       ========================================================================== */
+    .btn {
+      position: relative;
+      min-height: 36px;
+      padding: 6px 12px;
+      border-radius: 9px;
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      white-space: nowrap;
+      user-select: none;
+      box-shadow: inset 0 1px 0 var(--border-specular);
+      transition:
+        background-color 180ms var(--ease-tactile),
+        border-color 180ms var(--ease-tactile),
+        color 180ms var(--ease-tactile),
+        transform 180ms var(--ease-tactile),
+        box-shadow 180ms var(--ease-tactile);
+    }
+
+    .btn svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    .btn:hover {
+      border-color: var(--accent-amber);
+      background: var(--accent-glow);
+    }
+
+    .btn:active {
+      transform: scale(0.95);
+    }
+
+    .btn:focus-visible,
+    .hardware-select:focus-visible,
+    .range-slider:focus-visible {
+      outline: 2px solid var(--accent-amber);
+      outline-offset: 2px;
+    }
+
+    .btn.active,
+    .btn.primary {
+      background: var(--accent-amber);
+      color: #0B0C0E;
+      border-color: var(--accent-amber);
+      font-weight: 600;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 6px 18px var(--accent-glow);
+    }
+
+    .btn.primary:hover {
+      filter: brightness(1.06);
+    }
+
+    .btn.danger-subtle {
+      color: var(--text-secondary);
+    }
+
+    .btn.danger-subtle:hover {
+      color: var(--status-danger);
+      border-color: var(--status-danger);
+      background: rgba(217, 107, 102, 0.12);
+    }
+
+    /* Двухшаговое подтверждение очистки (2500 мс) */
+    .btn.is-armed-danger {
+      background: rgba(217, 107, 102, 0.18) !important;
+      color: var(--status-danger) !important;
+      border-color: var(--status-danger) !important;
+      box-shadow: 0 0 0 1px rgba(217, 107, 102, 0.25);
+    }
+
+    /* Аппаратный селектор */
+    .select-shell {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .hardware-select {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      height: 36px;
+      padding: 0 28px 0 11px;
+      border-radius: 9px;
+      border: 1px solid var(--border-hairline);
+      background-color: var(--bg-elevated);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: inset 0 1px 0 var(--border-specular);
+      transition: border-color 180ms var(--ease-tactile), background-color 180ms var(--ease-tactile);
+    }
+
+    .hardware-select:hover {
+      border-color: var(--accent-amber);
+    }
+
+    .select-chevron {
+      position: absolute;
+      right: 9px;
+      pointer-events: none;
+      width: 13px;
+      height: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* Кастомные ползунки с градиентным треком заполнения (--val-pct) */
+    .range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(
+        to right,
+        var(--accent-amber) 0%,
+        var(--accent-amber) var(--val-pct, 50%),
+        var(--bg-canvas) var(--val-pct, 50%),
+        var(--bg-canvas) 100%
+      );
+      border: 1px solid var(--border-hairline);
+      cursor: pointer;
+      margin: 4px 0;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text-primary);
+      border: 2px solid var(--accent-amber);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+      cursor: pointer;
+      transition: transform 180ms var(--ease-tactile), background-color 180ms var(--ease-tactile);
+    }
+
+    .range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.14);
+      background: var(--accent-amber);
+    }
+
+    .range-slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text-primary);
+      border: 2px solid var(--accent-amber);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+      cursor: pointer;
+      transition: transform 180ms var(--ease-tactile);
+    }
+
+    /* ==========================================================================
+       3. МОДУЛЬ 1: ВЕРХНЯЯ РЕДАКЦИОННАЯ ПАНЕЛЬ (#topHeaderBar)
+       ========================================================================== */
+    .top-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 900;
+      display: flex;
+       justify-content: center;
+      padding: 12px clamp(12px, 3vw, 28px) 0;
+      pointer-events: none;
+      transition: transform 360ms var(--ease-out-expo), opacity 360ms var(--ease-out-expo);
+    }
+
+    .top-bar-inner {
+      pointer-events: auto;
+      width: 100%;
+      max-width: 1080px;
+      background: var(--bg-glass-dock);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      border: 1px solid var(--border-hairline);
+      border-radius: 14px;
+      padding: 8px 12px;
+      box-shadow: var(--shadow-hardware);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .brand-cluster {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-monogram {
+      height: 30px;
+      padding: 0 10px;
+      border-radius: 7px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hairline);
+      color: var(--accent-amber);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .brand-monogram-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-amber);
+      animation: idleLedPulse 2800ms ease-in-out infinite;
+    }
+
+    .doc-title-pill {
+      padding: 5px 10px;
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      max-width: 280px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    /* ==========================================================================
+       4. РЕЖИМ ФОКУСА (body.focus-mode)
+       ========================================================================== */
+    body.focus-mode .top-bar {
+      transform: translateY(-130%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    body.focus-mode .main-stage {
+      padding-top: 32px !important;
+    }
+
+    body.focus-mode .dock-wing-left,
+    body.focus-mode .dock-wing-right,
+    body.focus-mode .dock-scrub-meta {
+      display: none !important;
+    }
+
+    body.focus-mode .floating-dock {
+      max-width: 460px;
+    }
+
+    body.focus-mode .dock-console-row {
+      justify-content: center;
+    }
+
+    #btnExitFocusDock {
+      display: none;
+    }
+
+    body.focus-mode #btnExitFocusDock {
+      display: inline-flex;
+      border-color: var(--accent-amber);
+      color: var(--accent-amber);
+      background: var(--accent-glow);
+    }
+
+    /* ==========================================================================
+       5. МОДУЛЬ 2: ЦЕНТРАЛЬНАЯ СЦЕНА, ЛИСТ РУКОПИСИ И МАТРИЦА НУЛЕВОГО СОСТОЯНИЯ
+       ========================================================================== */
+    .main-stage {
+      width: 100%;
+      max-width: var(--sheet-max-width);
+      margin: 0 auto;
+      padding-top: var(--layout-top-pad);
+      padding-bottom: var(--layout-bottom-pad);
+      padding-left: clamp(12px, 3vw, 24px);
+      padding-right: clamp(12px, 3vw, 24px);
+      transition: padding-top 320ms var(--ease-out-expo);
+    }
+
+    .book-sheet {
+      position: relative;
+      background-color: var(--bg-sheet);
+      border: 1px solid var(--border-hairline);
+      border-radius: 18px;
+      padding: clamp(24px, 5vw, 56px);
+      box-shadow: var(--shadow-sheet);
+      overflow: hidden;
+      transition:
+        background-color 320ms var(--ease-out-expo),
+        border-color 220ms var(--ease-out-expo),
+        box-shadow 320ms var(--ease-out-expo);
+    }
+
+    /* Текстура хлопковой книжной бумаги через встроенный SVG feTurbulence */
+    .book-sheet::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      filter: url(#paper-grain);
+      opacity: 0.025;
+    }
+
+    .book-sheet > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .book-sheet.drag-over {
+      border-color: var(--accent-amber);
+      box-shadow: 0 0 0 2px var(--accent-amber), var(--shadow-sheet);
+    }
+
+    .book-header {
+      border-bottom: 1px solid var(--border-hairline);
+      padding-bottom: 20px;
+      margin-bottom: 28px;
+    }
+
+    .book-header-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .book-title {
+      font-family: var(--font-serif);
+      font-size: clamp(1.65rem, 2.8vw, 2.35rem);
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      line-height: 1.22;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .book-title.reveal-active {
+      animation: titleVerticalReveal 420ms var(--ease-out-expo) both;
+    }
+
+    @keyframes titleVerticalReveal {
+      0% {
+        clip-path: inset(0 0 100% 0);
+        transform: translateY(8px);
+      }
+      100% {
+        clip-path: inset(0 0 0% 0);
+        transform: translateY(0);
+      }
+    }
+
+    .book-meta-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .book-meta-pills {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border-radius: 6px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hairline);
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .meta-pill.engine-pill {
+      color: var(--accent-amber);
+      border-color: rgba(217, 155, 82, 0.24);
+      background: var(--accent-glow);
+    }
+
+    /* Матрица нулевого состояния рукописи (Zero-State Matrix) */
+    .zero-state-matrix {
+      border: 1px dashed rgba(217, 155, 82, 0.32);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.015) 0%, rgba(0, 0, 0, 0.08) 100%);
+      padding: clamp(28px, 5vw, 48px) clamp(20px, 4vw, 36px);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      transition: border-color 220ms var(--ease-out-expo), background-color 220ms var(--ease-out-expo);
+    }
+
+    .zero-state-matrix.drag-over {
+      border-color: var(--accent-amber);
+      background: var(--accent-glow);
+    }
+
+    .zero-state-icon-frame {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hairline);
+      color: var(--accent-amber);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 1px 0 var(--border-specular);
+    }
+
+    .zero-state-icon-frame svg {
+      width: 24px;
+      height: 24px;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      fill: none;
+    }
+
+    .zero-state-headline {
+      font-family: var(--font-serif);
+      font-size: clamp(1.15rem, 2vw, 1.42rem);
+      font-weight: 400;
+      line-height: 1.55;
+      color: var(--text-primary);
+      max-width: 46ch;
+      margin: 0;
+    }
+
+    .zero-state-subcopy {
+      font-size: 12px;
+      color: var(--text-secondary);
+      max-width: 52ch;
+      line-height: 1.6;
+      margin: -8px 0 0;
+    }
+
+    .zero-state-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .zero-state-specs {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-hairline);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* Текст рукописи и Оптический трекинг фокуса (Optical Focus Tracking) */
+    .reading-body {
+      font-family: var(--font-serif);
+      font-size: var(--reader-font-size, 21px);
+      line-height: var(--reader-line-height, 1.8);
+      color: var(--text-primary);
+      max-width: 64ch;
+      margin: 0 auto;
+      overflow-wrap: break-word;
+    }
+
+    .reading-paragraph {
+      margin: 0 0 1.25em 0;
+      opacity: 1;
+      transition: opacity 350ms var(--ease-out-expo);
+      animation: paraFadeUp 380ms var(--ease-out-expo) both;
+    }
+
+    @keyframes paraFadeUp {
+      0% {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* При активном воспроизведении неактивные абзацы приглушаются до 0.42 */
+    .reading-body.is-playing .reading-paragraph {
+      opacity: 0.42;
+    }
+
+    .reading-body.is-playing .reading-paragraph.active-paragraph {
+      opacity: 1;
+    }
+
+    .reading-body.is-playing .reading-paragraph:hover {
+      opacity: 0.92;
+    }
+
+    .sentence-node {
+      padding: 2px 5px;
+      margin: 0 -3px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition:
+        background-color 180ms var(--ease-tactile),
+        box-shadow 180ms var(--ease-tactile),
+        color 180ms var(--ease-tactile);
+    }
+
+    .sentence-node:hover {
+      background: var(--accent-glow);
+    }
+
+    .sentence-node.active {
+      background: var(--accent-glow);
+      box-shadow: -3px 0 0 0 var(--accent-amber);
+      color: var(--text-primary);
+    }
+
+    /* ==========================================================================
+       6. МОДУЛЬ 3: ДВУХДЕКОВЫЙ ПЛАВАЮЩИЙ ПУЛЬТ (#bottomDockWrapper)
+       ========================================================================== */
+    .floating-dock-wrapper {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 900;
+      padding: 0 clamp(10px, 2.5vw, 24px) calc(12px + env(safe-area-inset-bottom, 0px));
+      pointer-events: none;
+      display: flex;
+      justify-content: center;
+    }
+
+    .floating-dock {
+      pointer-events: auto;
+      width: 100%;
+      max-width: 1080px;
+      background: var(--bg-glass-dock);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      border: 1px solid var(--border-hairline);
+      border-radius: 16px;
+      box-shadow: var(--shadow-hardware);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: max-width 320ms var(--ease-out-expo);
+    }
+
+    /* Верхняя кромка: скраббинг-трек и табличные счетчики */
+    .dock-scrub-tier {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 14px 5px;
+      border-bottom: 1px solid var(--border-hairline);
+      background: rgba(0, 0, 0, 0.14);
+    }
+
+    .dock-counter {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      min-width: 66px;
+    }
+
+    .dock-counter.pct {
+      min-width: 38px;
+      text-align: right;
+      color: var(--accent-amber);
+    }
+
+    .dock-scrub-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      flex: 1;
+      height: 4px;
+      border-radius: 999px;
+      background: linear-gradient(
+        to right,
+        var(--accent-amber) 0%,
+        var(--accent-amber) var(--val-pct, 0%),
+        var(--bg-elevated) var(--val-pct, 0%),
+        var(--bg-elevated) 100%
+      );
+      cursor: pointer;
+      transition: height 180ms var(--ease-tactile);
+    }
+
+    .dock-scrub-slider:hover {
+      height: 8px;
+    }
+
+    .dock-scrub-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent-amber);
+      border: 2px solid var(--bg-sheet);
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+      transition: transform 180ms var(--ease-tactile);
+    }
+
+    .dock-scrub-slider:hover::-webkit-slider-thumb {
+      transform: scale(1.2);
+    }
+
+    /* Основной ряд консоли: Левое крыло (телеметрия) | Центр (транспорт) | Правое крыло (голос/скорость) */
+    .dock-console-row {
+      display: grid;
+      grid-template-columns: minmax(210px, 1.25fr) auto minmax(230px, 1.15fr);
+      align-items: center;
+      gap: 14px;
+      padding: 10px 14px 12px;
+    }
+
+    .dock-wing-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .telemetry-strip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .status-led {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      animation: idleLedPulse 2800ms ease-in-out infinite;
+    }
+
+    .status-badge.is-playing {
+      color: var(--status-live);
+    }
+
+    .status-badge.is-playing .status-led {
+      background: var(--status-live);
+      box-shadow: 0 0 8px var(--status-live);
+      animation: none;
+    }
+
+    .status-badge.is-paused {
+      color: var(--accent-amber);
+    }
+
+    .status-badge.is-paused .status-led {
+      background: var(--accent-amber);
+    }
+
+    @keyframes idleLedPulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1.0; }
+    }
+
+    /* Двухканальный аппаратный индикатор ДЕКА A / ДЕКА B */
+    .dual-deck-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hairline);
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+
+    .deck-slot {
+      padding: 1px 5px;
+      border-radius: 3px;
+      transition: background-color 180ms var(--ease-tactile), color 180ms var(--ease-tactile);
+    }
+
+    .deck-slot.active-deck {
+      background: var(--accent-glow);
+      color: var(--accent-amber);
+      font-weight: 600;
+    }
+
+    .deck-slot.standby-ready {
+      color: var(--status-live);
+    }
+
+    .status-sentence {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Центральное ядро транспорта */
+    .transport-core {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .btn-transport {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border-radius: 10px;
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: inset 0 1px 0 var(--border-specular);
+      transition:
+        background-color 180ms var(--ease-tactile),
+        border-color 180ms var(--ease-tactile),
+        transform 180ms var(--ease-tactile),
+        color 180ms var(--ease-tactile);
+    }
+
+    .btn-transport svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .btn-transport:hover {
+      border-color: var(--accent-amber);
+      background: var(--accent-glow);
+      color: var(--accent-amber);
+    }
+
+    .btn-transport:active {
+      transform: scale(0.95);
+    }
+
+    .btn-circle-main {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: var(--accent-amber);
+      color: #0B0C0E;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 24px rgba(217, 155, 82, 0.32);
+      transition: transform 180ms var(--ease-tactile), filter 180ms var(--ease-tactile), box-shadow 180ms var(--ease-tactile);
+    }
+
+    .btn-circle-main svg {
+      width: 20px;
+      height: 20px;
+      stroke: #0B0C0E;
+      stroke-width: 1.75;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .btn-circle-main:hover {
+      filter: brightness(1.07);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 10px 28px rgba(217, 155, 82, 0.45);
+    }
+
+    .btn-circle-main:active {
+      transform: scale(0.95);
+    }
+
+    /* Правое крыло: селекторы голоса и скорости */
+    .dock-wing-right {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .voice-select-wrap {
+      flex: 1;
+      min-width: 140px;
+      max-width: 260px;
+    }
+
+    .rate-select-wrap {
+      width: 82px;
+      flex-shrink: 0;
+    }
+
+    .rate-select-wrap .hardware-select {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+    }
+
+    /* ==========================================================================
+       7. МОДУЛИ 4 И 5: НЕБЛОКИРУЮЩИЕ МОДАЛЬНЫЕ ОКНА (#editorDrawer, #studioDrawer)
+       ========================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      background: var(--backdrop-overlay);
+      backdrop-filter: blur(20px) saturate(140%);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(12px, 3vw, 32px);
+      opacity: 1;
+      transition: opacity 320ms var(--ease-out-expo);
+    }
+
+    .modal-backdrop[hidden] {
+      display: none !important;
+    }
+
+    .modal-surface {
+      width: 100%;
+      max-width: 760px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      background: var(--bg-glass-dock);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      border: 1px solid var(--border-hairline);
+      border-radius: 18px;
+      padding: clamp(18px, 3.5vw, 28px);
+      box-shadow: var(--shadow-hardware);
+      transform: translateY(0);
+      animation: drawerSlideIn 340ms var(--ease-out-expo) both;
+    }
+
+    @keyframes drawerSlideIn {
+      0% {
+        opacity: 0;
+        transform: translateY(18px) scale(0.985);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--border-hairline);
+    }
+
+    .modal-title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .modal-title {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .editor-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .editor-title-input {
+      flex: 1;
+      min-width: 180px;
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 9px;
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .editor-dropzone-bar {
+      border: 1px dashed rgba(217, 155, 82, 0.3);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      background: rgba(255, 255, 255, 0.015);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--text-secondary);
+      transition: border-color 180ms var(--ease-tactile), background-color 180ms var(--ease-tactile);
+    }
+
+    .editor-dropzone-bar.drag-over {
+      border-color: var(--accent-amber);
+      background: var(--accent-glow);
+      color: var(--text-primary);
+    }
+
+    .editor-textarea {
+      width: 100%;
+      min-height: 250px;
+      background: var(--bg-canvas);
+      color: var(--text-primary);
+      border: 1px solid var(--border-hairline);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-family: var(--font-serif);
+      font-size: 17px;
+      line-height: 1.65;
+      resize: vertical;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+
+    .editor-textarea:focus {
+      outline: none;
+      border-color: var(--accent-amber);
+    }
+
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-hairline);
+    }
+
+    /* Сетка акустической калибровки и типографики (#studioDrawer) */
+    .studio-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .studio-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hairline);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: inset 0 1px 0 var(--border-specular);
+    }
+
+    .studio-control-row {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .studio-label-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .studio-val-readout {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-amber);
+    }
+
+    /* 4-полосный анимированный эквалайзер для пробы голоса */
+    .eq-bars {
+      display: none;
+      align-items: flex-end;
+      gap: 2px;
+      height: 13px;
+    }
+
+    .btn.is-previewing .eq-bars {
+      display: inline-flex;
+    }
+
+    .eq-bar {
+      width: 2.5px;
+      background: currentColor;
+      border-radius: 1px;
+      animation: eqBounce 640ms ease-in-out infinite alternate;
+    }
+
+    .eq-bar:nth-child(1) { height: 5px; animation-delay: 0ms; }
+    .eq-bar:nth-child(2) { height: 12px; animation-delay: 140ms; }
+    .eq-bar:nth-child(3) { height: 7px; animation-delay: 280ms; }
+    .eq-bar:nth-child(4) { height: 10px; animation-delay: 90ms; }
+
+    @keyframes eqBounce {
+      0% { transform: scaleY(0.35); }
+      100% { transform: scaleY(1); }
+    }
+
+    /* Тактильный тумблер автопрокрутки */
+    .tactile-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-top: 1px solid var(--border-hairline);
+      border-bottom: 1px solid var(--border-hairline);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .tactile-switch {
+      position: relative;
+      width: 42px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .tactile-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .tactile-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-hairline);
+      transition: background-color 220ms var(--ease-tactile), border-color 220ms var(--ease-tactile);
+    }
+
+    .tactile-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      transition: transform 220ms var(--ease-tactile), background-color 220ms var(--ease-tactile);
+    }
+
+    .tactile-switch input:checked + .tactile-track {
+      background: var(--accent-glow);
+      border-color: var(--accent-amber);
+    }
+
+    .tactile-switch input:checked + .tactile-track .tactile-thumb {
+      transform: translateX(18px);
+      background: var(--accent-amber);
+    }
+
+    .sleep-pills-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    /* ==========================================================================
+       8. МОДУЛЬ 6: КАРМАННЫЙ ЭКРАН БЛОКИРОВКИ ZERO-LUX OLED (#oledOverlay)
+       ========================================================================== */
+    .oled-saver {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #000000;
+      color: #8A8680;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .oled-saver[hidden] {
+      display: none !important;
+    }
+
+    .oled-frame {
+      width: 100%;
+      max-width: 480px;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      border-radius: 22px;
+      padding: 28px 22px;
+      background: #040404;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .oled-phrase-readout {
+      font-family: var(--font-serif);
+      font-size: 16px;
+      line-height: 1.6;
+      color: rgba(217, 155, 82, 0.78);
+      min-height: 76px;
+      max-width: 40ch;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .oled-transport-row {
+      display: grid;
+      grid-template-columns: 1fr 1.35fr 1fr;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .btn-oled-wireframe {
+      min-height: 60px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: #08080A;
+      color: #D8D4CD;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 180ms var(--ease-tactile), border-color 180ms var(--ease-tactile);
+    }
+
+    .btn-oled-wireframe svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      fill: none;
+    }
+
+    .btn-oled-wireframe.primary-wire {
+      border-color: rgba(217, 155, 82, 0.55);
+      color: #D99B52;
+    }
+
+    .btn-oled-wireframe:active {
+      transform: scale(0.95);
+    }
+
+    /* Кнопка удержания 900 мс с прогресс-кольцом SVG */
+    .btn-hold-unlock {
+      position: relative;
+      width: 100%;
+      min-height: 52px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: #08080A;
+      color: #9A9690;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      overflow: hidden;
+      transition: border-color 180ms var(--ease-tactile), color 180ms var(--ease-tactile);
+    }
+
+    .btn-hold-unlock.is-holding {
+      border-color: var(--accent-amber);
+      color: var(--accent-amber);
+    }
+
+    .hold-ring-svg {
+      width: 24px;
+      height: 24px;
+      transform: rotate(-90deg);
+      flex-shrink: 0;
+    }
+
+    .hold-ring-track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.12);
+      stroke-width: 2.5;
+    }
+
+    .hold-ring-progress {
+      fill: none;
+      stroke: var(--accent-amber);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      transition: stroke-dashoffset 120ms linear;
+    }
+
+    .btn-hold-unlock.is-holding .hold-ring-progress {
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 900ms linear;
+    }
+
+    /* ==========================================================================
+       9. АДАПТИВНОСТЬ (360px — 4K) И ДОСТУПНОСТЬ ДВИЖЕНИЯ
+       ========================================================================== */
+    @media (max-width: 820px) {
+      .dock-console-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .dock-wing-left {
+        align-items: center;
+        text-align: center;
+      }
+      .dock-wing-right {
+        justify-content: stretch;
+      }
+      .voice-select-wrap {
+        max-width: none;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .doc-title-pill {
+        display: none;
+      }
+      .top-bar-inner {
+        padding: 7px 10px;
+      }
+      .btn {
+        padding: 5px 9px;
+        min-height: 34px;
+        font-size: 12px;
+      }
+      .modal-backdrop {
+        align-items: flex-end;
+        padding: 0;
+      }
+      .modal-surface {
+        max-width: 100%;
+        border-radius: 20px 20px 0 0;
+        max-height: 88vh;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      .btn-hold-unlock.is-holding .hold-ring-progress {
+        transition: stroke-dashoffset 900ms linear !important;
+      }
+    }
+
+    /* Portable single-file corrections: no CDN fonts or external scripts. */
+    [hidden] { display: none !important; }
+    :root { --font-serif: Georgia, 'Times New Roman', serif; --font-sans: 'Segoe UI', Arial, sans-serif; --font-mono: Consolas, monospace; }
+    html { color-scheme: dark; scrollbar-gutter: stable; }
+    html[data-theme="light"] { color-scheme: light; }
+    .btn:disabled, input:disabled { opacity: .48; cursor: not-allowed; }
+    button:focus-visible, .sentence-node:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 3px; }
+    .app-notice { font-size: 12px; line-height: 1.65; color: var(--text-secondary); margin-bottom: 16px; overflow-wrap: anywhere; }
+    .app-notice.is-error { color: var(--status-danger); }
+    .source-hint { color: var(--text-secondary); font-size: 12px; line-height: 1.65; margin-bottom: 24px; overflow-wrap: anywhere; }
+    .book-title { overflow-wrap: anywhere; }
+    .studio-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); }
+    .studio-voice-select { display: flex; width: 100%; min-width: 0; }
+    .pause-help { margin: 4px 0 0; color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
+    .status-badge { letter-spacing: 0; font-size: 10px; min-width: 0; max-width: 100%; }
+    #lblStateText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .telemetry-strip { min-width: 0; }
+    .doc-title-pill { max-width: 160px; }
+    .dock-console-row { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); }
+    .voice-select-wrap { min-width: 0; }
+    .reading-paragraph { animation-fill-mode: backwards; }
+    body.focus-mode .dock-console-row { display: flex; justify-content: center; }
+    body.focus-mode .transport-core { flex-wrap: wrap; }
+    .modal-surface { overscroll-behavior: contain; max-height: calc(100dvh - 32px); }
+    .tactile-switch input:focus-visible + .tactile-track { outline: 2px solid var(--accent-amber); outline-offset: 3px; }
+    .dock-scrub-slider { min-width: 0; }
+    .dock-scrub-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--bg-sheet); background: var(--accent-amber); }
+    @media(max-width:1000px) { .dock-console-row { grid-template-columns: 1fr auto; } .dock-wing-right { grid-column: 1 / -1; } .voice-select-wrap { max-width: none; } }
+    @media(max-width:680px) {
+      .top-bar-inner { gap: 8px; } .brand-cluster { display: none; } .top-actions { width: 100%; gap: 6px; }
+      .top-actions .btn { flex: 1 1 auto; } .btn, .hardware-select, .btn-transport { min-height: 44px; }
+      .btn-transport { width: 44px; } .btn-circle-main { width: 50px; height: 50px; }
+      .dock-console-row { grid-template-columns: 1fr; gap: 7px; padding: 8px 10px; }
+      .dock-wing-left { align-items: center; } .status-sentence { display: none; }
+      .telemetry-strip { justify-content: center; } .dock-wing-right { grid-column: auto; }
+      .rate-select-wrap { width: 88px; } .book-sheet { padding: 24px 20px; }
+      .book-header-top .btn { width: 100%; white-space: normal; line-height: 1.4; }
+      .editor-title-input { width: 100%; min-width: 0; flex-basis: 100%; }
+      .editor-toolbar .btn { white-space: normal; line-height: 1.4; }
+      .modal-surface { max-height: 94dvh; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+      .oled-frame { padding: 24px 16px; } .oled-transport-row { gap: 8px; }
+      .btn-oled-wireframe { font-size: 11px; } .reading-body { line-height: 1.7; }
+    }
+    @media(max-height:520px) and (orientation:landscape) { .dock-wing-left,.dock-wing-right { display: none; } .dock-console-row { display: flex; justify-content: center; } }
+
+/* Direction 04: matte graphite, chalk, quiet reading. No decorative glass. */
+:root,
+html[data-theme="dark"] {
+  --bg-canvas: #222624;
+  --bg-sheet: #222624;
+  --bg-elevated: #2c312f;
+  --bg-glass-dock: #2c312f;
+  --bg-drawer: #2c312f;
+  --text-primary: #f0f0ea;
+  --text-secondary: #acb6ae;
+  --text-muted: #98a39a;
+  --border-hairline: #4c5850;
+  --border-specular: transparent;
+  --accent-amber: #d3dabf;
+  --accent-amber-hover: #e3e8d6;
+  --accent-glow: #354034;
+  --accent-reading-bg: #465244;
+  --accent-reading-text: #f6f6ed;
+  --accent-soft-border: #788770;
+  --status-success: #b4c9ad;
+  --status-danger: #eab3a7;
+  --shadow-sheet: none;
+  --shadow-hardware: none;
+  --shadow-inset: none;
+  --font-sans: 'Segoe UI', 'Trebuchet MS', Arial, sans-serif;
+  --font-serif: Georgia, 'Times New Roman', serif;
+  --sheet-max-width: 970px;
+}
+html[data-theme="light"] {
+  --bg-canvas: #e7ebe3; --bg-sheet: #e7ebe3; --bg-elevated: #f4f5ee;
+  --bg-glass-dock: #f4f5ee; --bg-drawer: #f4f5ee;
+  --text-primary: #28312a; --text-secondary: #526254; --text-muted: #59685a;
+  --border-hairline: #b3bfb0; --border-specular: transparent;
+  --accent-amber: #3b5b3c; --accent-amber-hover: #29472b; --accent-glow: #dce4d3;
+  --accent-reading-bg: #cddbbf; --accent-reading-text: #202d20; --accent-soft-border: #708469;
+  --status-success: #3c663b; --status-danger: #a23d31;
+}
+html[data-theme="oled"] {
+  --bg-canvas: #000; --bg-sheet: #000; --bg-elevated: #111512;
+  --bg-glass-dock: #111512; --bg-drawer: #111512;
+  --text-primary: #eceee5; --text-secondary: #b1baae; --text-muted: #9aa696;
+  --border-hairline: #3e4c3c; --border-specular: transparent;
+  --accent-amber: #d3dabf; --accent-amber-hover: #e3e8d6; --accent-glow: #252e23;
+  --accent-reading-bg: #354531; --accent-reading-text: #f0f2e7; --accent-soft-border: #788770;
+}
+body { background: var(--bg-canvas); }
+button, select, input, textarea { font-family: var(--font-sans); }
+.top-bar { padding-top: 0; background: var(--bg-canvas); }
+.top-bar-inner {
+  max-width: 1120px; padding: 18px 0 15px; border: 0;
+  border-bottom: 1px solid var(--border-hairline); border-radius: 0;
+  background: var(--bg-canvas); backdrop-filter: none; -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.brand-monogram { padding: 0; height: auto; background: none; border: 0; color: var(--text-primary); font: 600 32px/.95 var(--font-sans); letter-spacing: -.07em; }
+.brand-monogram-dot { display: none; }
+.brand-cluster { gap: 20px; }
+.doc-title-pill { background: none; border: 0; padding: 3px 0; font-size: 12px; }
+.btn, .hardware-select { box-shadow: none; border-radius: 6px; }
+.btn { min-height: 42px; background: transparent; border-color: transparent; font-weight: 500; }
+.btn:hover { background: var(--bg-elevated); border-color: var(--border-hairline); transform: none; }
+.btn:active { transform: none; }
+.btn svg { opacity: .85; }
+.btn.primary, .btn.primary:hover, .btn.is-primary, .btn.btn-primary, .btn.accent { background: var(--accent-amber); color: var(--bg-canvas); border-color: var(--accent-amber); box-shadow: none; }
+.book-sheet { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 38px 40px; }
+.book-sheet::before { display: none; }
+.book-sheet.drag-over { outline: 1px dashed var(--accent-amber); box-shadow: none; }
+.book-title { font: 400 clamp(26px,3vw,36px)/1.2 var(--font-sans); letter-spacing: -.035em; }
+.book-header { padding-bottom: 20px; margin-bottom: 22px; }
+.book-header-top { align-items: center; }
+.meta-pill, .meta-pill.engine-pill { font-family: var(--font-sans); border: 0; padding: 0; background: none; color: var(--text-secondary); }
+.book-meta-pills { gap: 17px; }
+.source-hint { max-width: 700px; font-size: 12px; line-height: 1.7; }
+.app-notice { font-size: 12px; }
+.dock-audio-message { margin: 0; padding: 10px 14px; max-height: 22dvh; overflow: auto; overflow-wrap: anywhere; color: var(--text-primary); border-bottom: 1px solid var(--border-hairline); font-size: 12px; line-height: 1.5; }
+.dock-audio-message.is-error { color: var(--status-danger); }
+.zero-state-matrix { border: 0; border-radius: 0; background: transparent; align-items: flex-start; text-align: left; padding: 30px 0 26px; gap: 19px; }
+.zero-state-icon-frame, .zero-state-specs { display: none; }
+.zero-state-copy { max-width: 610px; }
+.zero-state-copy h2 { font-weight: 400; letter-spacing: -.025em; }
+.zero-state-copy p { max-width: 580px; font-size: 15px; line-height: 1.8; }
+.zero-state-actions { justify-content: flex-start; }
+.zero-state-actions .btn { border-color: var(--border-hairline); padding: 12px 18px; }
+.reading-body { color: var(--text-primary); line-height: 1.95; }
+.reading-paragraph { animation: none; margin-bottom: 1.5em; }
+.sentence-node { border-radius: 3px; }
+.sentence-node.active, .reading-body.is-playing .sentence-node.active { background: var(--accent-reading-bg); color: var(--accent-reading-text); box-shadow: none; text-shadow: none; }
+.sentence-node:hover { background: var(--accent-glow); }
+.dock-wrapper { padding-bottom: 16px; }
+.floating-dock { max-width: 1050px; background: var(--bg-glass-dock); border: 1px solid var(--border-hairline); border-radius: 10px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.dock-console-row { padding: 13px 18px; gap: 16px; }
+.dock-scrub-meta { font-family: var(--font-sans); letter-spacing: .025em; }
+.status-badge { background: transparent; border: 0; padding-left: 0; font-family: var(--font-sans); letter-spacing: .02em; color: var(--text-secondary); }
+.status-badge.is-playing { box-shadow: none; background: transparent; }
+.status-led, .status-badge.is-playing .status-led { box-shadow: none; animation: none; }
+.dual-deck-indicator { display: none; }
+.btn-transport { border-radius: 50%; box-shadow: none; }
+.btn-circle-main, .btn-circle-main:hover { background: var(--accent-amber); color: var(--bg-canvas); box-shadow: none; border-color: var(--accent-amber); }
+.hardware-select { background-color: var(--bg-elevated); }
+.modal-surface { background: var(--bg-drawer); border: 1px solid var(--border-hairline); border-radius: 10px; box-shadow: none; }
+.modal-backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(0,0,0,.65); }
+.studio-card { background: transparent; border-color: var(--border-hairline); box-shadow: none; border-radius: 6px; }
+.studio-card-title { font-family: var(--font-sans); letter-spacing: 0; }
+.editor-title-input, .editor-textarea { box-shadow: none; }
+.studio-label-line, .pause-help { font-family: var(--font-sans); }
+.pause-help { font-size: 12px; line-height: 1.65; }
+.bridge-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.bridge-actions .btn { display: inline-flex; align-items: center; text-decoration: none; color: var(--text-primary); border-color: var(--border-hairline); font-size: 12px; padding: 8px 12px; }
+.btn.is-previewing { box-shadow: none; }
+.oled-saver, .oled-frame { box-shadow: none; }
+@media (max-width:680px) {
+  .top-bar-inner { padding: 13px 0; }
+  .top-actions { gap: 5px; }
+  .top-actions .btn { padding-left: 9px; padding-right: 9px; }
+  .book-sheet { padding: 26px 7px; }
+  .book-header-top { gap: 18px; }
+  .book-title { font-size: 29px; }
+  .book-meta-pills { gap: 12px; }
+  .zero-state-matrix { padding: 14px 0; }
+  .zero-state-actions { width: 100%; align-items: stretch; }
+  .zero-state-actions .btn { white-space: normal; text-align: left; }
+  .dock-console-row { padding: 9px 12px; gap: 9px; }
+  .dock-wrapper { padding-bottom: max(8px,env(safe-area-inset-bottom)); }
+  .reading-body { line-height: 1.8; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       0. ВСТРОЕННЫЙ SVG-СЕЙФ: ФИЛЬТР БУМАЖНОГО ЗЕРНА И ВЕКТОРНЫЕ ИКОНКИ (1.5px)
+       ======================================================================== -->
+  <svg class="svg-defs-vault" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- Текстура хлопковой бумаги для .book-sheet -->
+      <filter id="paper-grain" x="0%" y="0%" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" result="noise" />
+        <feColorMatrix type="saturate" values="0" in="noise" result="desaturatedNoise" />
+        <feComponentTransfer in="desaturatedNoise" result="grain">
+          <feFuncA type="linear" slope="0.65" />
+        </feComponentTransfer>
+      </filter>
+
+      <!-- Иконки интерфейса (строго 1.5px stroke, round caps/joins) -->
+      <symbol id="ico-manuscript" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="8" y1="13" x2="16" y2="13"></line>
+        <line x1="8" y1="17" x2="13" y2="17"></line>
+      </symbol>
+
+      <symbol id="ico-clear" viewBox="0 0 24 24">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+        <path d="M10 11v6"></path>
+        <path d="M14 11v6"></path>
+        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+      </symbol>
+
+      <symbol id="ico-sliders" viewBox="0 0 24 24">
+        <line x1="4" y1="21" x2="4" y2="14"></line>
+        <line x1="4" y1="10" x2="4" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12" y2="3"></line>
+        <line x1="20" y1="21" x2="20" y2="16"></line>
+        <line x1="20" y1="12" x2="20" y2="3"></line>
+        <line x1="1" y1="14" x2="7" y2="14"></line>
+        <line x1="9" y1="8" x2="15" y2="8"></line>
+        <line x1="17" y1="16" x2="23" y2="16"></line>
+      </symbol>
+
+      <symbol id="ico-focus" viewBox="0 0 24 24">
+        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </symbol>
+
+      <symbol id="ico-theme" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4"></circle>
+        <path d="M12 2v2"></path>
+        <path d="M12 20v2"></path>
+        <path d="M4.93 4.93l1.41 1.41"></path>
+        <path d="M17.66 17.66l1.41 1.41"></path>
+        <path d="M2 12h2"></path>
+        <path d="M20 12h2"></path>
+        <path d="M6.34 17.66l-1.41 1.41"></path>
+        <path d="M19.07 4.93l-1.41 1.41"></path>
+      </symbol>
+
+      <symbol id="ico-clipboard" viewBox="0 0 24 24">
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+      </symbol>
+
+      <symbol id="ico-upload" viewBox="0 0 24 24">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="17 8 12 3 7 8"></polyline>
+        <line x1="12" y1="3" x2="12" y2="15"></line>
+      </symbol>
+
+      <symbol id="ico-play" viewBox="0 0 24 24">
+        <polygon points="6 4 20 12 6 20 6 4"></polygon>
+      </symbol>
+
+      <symbol id="ico-pause" viewBox="0 0 24 24">
+        <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+        <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+      </symbol>
+
+      <symbol id="ico-prev" viewBox="0 0 24 24">
+        <polygon points="19 20 9 12 19 4 19 20"></polygon>
+        <line x1="5" y1="19" x2="5" y2="5"></line>
+      </symbol>
+
+      <symbol id="ico-next" viewBox="0 0 24 24">
+        <polygon points="5 4 15 12 5 20 5 4"></polygon>
+        <line x1="19" y1="5" x2="19" y2="19"></line>
+      </symbol>
+
+      <symbol id="ico-stop" viewBox="0 0 24 24">
+        <rect x="6" y="6" width="12" height="12" rx="1.5"></rect>
+      </symbol>
+
+      <symbol id="ico-oled" viewBox="0 0 24 24">
+        <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+        <line x1="12" y1="18" x2="12.01" y2="18"></line>
+      </symbol>
+
+      <symbol id="ico-close" viewBox="0 0 24 24">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </symbol>
+
+      <symbol id="ico-chevron-down" viewBox="0 0 24 24">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </symbol>
+
+      <symbol id="ico-wave" viewBox="0 0 24 24">
+        <path d="M2 12h2"></path>
+        <path d="M6 8v8"></path>
+        <path d="M10 4v16"></path>
+        <path d="M14 7v10"></path>
+        <path d="M18 9v6"></path>
+        <path d="M22 12h-2"></path>
+      </symbol>
+
+      <symbol id="ico-lock" viewBox="0 0 24 24">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- ТРИ ИЗОЛИРОВАННЫХ АУДИОКАНАЛА: ДВУХДЕКОВЫЙ PING-PONG (A/B) + КАНАЛ ПРОБЫ ГОЛОСА -->
+  <audio id="neuralAudioA" referrerpolicy="no-referrer" preload="auto" playsinline></audio>
+  <audio id="neuralAudioB" referrerpolicy="no-referrer" preload="auto" playsinline></audio>
+  <audio id="previewAudio" referrerpolicy="no-referrer" preload="auto" playsinline></audio>
+
+  <!-- ========================================================================
+       1. ВЕРХНЯЯ РЕДАКЦИОННАЯ ПАНЕЛЬ (Floating Editorial Header Bar)
+       ======================================================================== -->
+  <header class="top-bar" id="topHeaderBar">
+    <div class="top-bar-inner">
+      <div class="brand-cluster">
+        <div class="brand-monogram" title="Аудиофильская настройки звука чтения AURA READER">
+          <span class="brand-monogram-dot"></span>
+          <span>тише.</span>
+        </div>
+        <div class="doc-title-pill" id="headerDocPill">Ожидание рукописи</div>
+      </div>
+
+      <nav class="top-actions" aria-label="Инструменты студии">
+        <button type="button" class="btn" id="btnToggleEditor" onclick="window.AuraApp.toggleEditor()" title="Открыть редактор рукописи или импортировать файл">
+          <svg><use href="#ico-manuscript"></use></svg>
+          <span>Рукопись</span>
+        </button>
+
+        <button type="button" class="btn danger-subtle" id="btnClearTop" onclick="window.AuraApp.clearAllText()" title="Двухшаговый сброс текущей рукописи">
+          <svg><use href="#ico-clear"></use></svg>
+          <span id="lblClearTop">Очистить</span>
+        </button>
+
+        <button type="button" class="btn" id="btnToggleStudio" onclick="window.AuraApp.toggleStudio()" title="Настройки голоса, пауз между предложениями, шрифта и таймера сна">
+          <svg><use href="#ico-sliders"></use></svg>
+          <span>Акустика и шрифт</span>
+        </button>
+
+        <button type="button" class="btn" id="btnToggleFocus" onclick="window.AuraApp.toggleFocus()" title="Режим глубокого чтения без периферийных панелей">
+          <svg><use href="#ico-focus"></use></svg>
+          <span>Фокус</span>
+        </button>
+
+        <button type="button" class="btn" id="btnCycleTheme" onclick="window.AuraApp.cycleTheme()" title="Переключить световую среду: Тёмная, Светлая, OLED">
+          <svg><use href="#ico-theme"></use></svg>
+          <span id="lblCycleTheme">Свет: Тёмная</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       2. ЦЕНТРАЛЬНАЯ СЦЕНА: ЛИСТ РУКОПИСИ И МАТРИЦА НУЛЕВОГО СОСТОЯНИЯ
+       ======================================================================== -->
+  <main class="main-stage" id="mainStage">
+    <article class="book-sheet" id="bookSheet">
+      <header class="book-header">
+        <div class="book-header-top">
+          <div>
+            <div class="section-eyebrow" style="margin-bottom: 6px;">Останься с историей</div>
+            <h1 class="book-title" id="bookTitleHeading">Рукопись не загружена</h1>
+          </div>
+
+          <button type="button" class="btn" id="btnPlayFromSelected" onclick="window.AuraApp.togglePlay()" title="Слушать с выбранной фразы">
+            <svg><use href="#ico-play"></use></svg>
+            <span>Слушать с выбранной фразы</span>
+          </button>
+        </div>
+
+        <div id="appNotice" class="app-notice" role="status">Текст хранится в этом браузере. Сделай копию важных рукописей.</div>
+        <div class="book-meta-bar">
+          <div class="book-meta-pills">
+            <span class="meta-pill" id="metaSentences">Фраз: 0</span>
+            <span class="meta-pill" id="metaWords">Слов: ~0</span>
+            <span class="meta-pill" id="metaTime">Звучание: ~0 мин</span>
+          </div>
+          <span class="meta-pill engine-pill" id="metaEngineBadge">PING-PONG БУФЕР · СРЕЗ СТЫКА 140 МС</span>
+        </div>
+      </header>
+
+      <aside id="sourceHint" class="source-hint" aria-live="polite"></aside>
+      <!-- Матрица нулевого состояния (отображается, когда segments.length === 0) -->
+      <section id="zeroStateMatrix" class="zero-state-matrix">
+        <div class="zero-state-icon-frame">
+          <svg><use href="#ico-manuscript"></use></svg>
+        </div>
+
+        <p class="zero-state-headline">
+          Лист ожидает рукопись. Вставьте текст из буфера обмена или перетащите файл на страницу.
+        </p>
+
+        <p class="zero-state-subcopy">
+          Вставь текст или загрузи файл. Выбери реальный голос устройства и слушай с любой фразы. Для сетевого MP3 доступна предзагрузка следующего фрагмента.
+        </p>
+
+        <div class="zero-state-actions">
+          <button type="button" class="btn primary" id="btnZeroPasteRead" onclick="window.AuraApp.pasteFromClipboardAndRead()">
+            <svg><use href="#ico-clipboard"></use></svg>
+            <span>Вставить из буфера</span>
+          </button>
+
+          <button type="button" class="btn" onclick="document.getElementById('fileImportInput').click()">
+            <svg><use href="#ico-upload"></use></svg>
+            <span>Выбрать файл (.txt, .md, .html)</span>
+          </button>
+
+          <button type="button" class="btn" onclick="window.AuraApp.toggleEditor(true)">
+            <svg><use href="#ico-manuscript"></use></svg>
+            <span>Открыть редактор рукописи</span>
+          </button>
+        </div>
+
+        <div class="zero-state-specs">
+          <span>ФОРМАТЫ: TXT · MD · HTML · HTM</span>
+          <span>TXT · MD · HTML</span>
+          <span>ХРАНИЛИЩЕ: ЛОКАЛЬНОЕ</span>
+        </div>
+      </section>
+
+      <!-- Контейнер интерактивных абзацев (.reading-paragraph) и фраз (.sentence-node) -->
+      <div id="bookReadingContainer" class="reading-body" hidden></div>
+    </article>
+  </main>
+
+  <!-- ========================================================================
+       3. ДВУХДЕКОВЫЙ ПЛАВАЮЩИЙ ПУЛЬТ (Dual-Deck Ping-Pong Floating Console)
+       ======================================================================== -->
+  <div class="floating-dock-wrapper" id="bottomDockWrapper">
+    <footer class="floating-dock" aria-label="Пульт управления воспроизведением">
+      <p id="dockAudioMessage" class="dock-audio-message" role="status" hidden></p>
+
+      <!-- Верхний ярус: полноширинный скраббинг-трек и табличные счетчики -->
+      <div class="dock-scrub-tier">
+        <span class="dock-counter mono-tabular" id="lblProgressCounter">00 / 00</span>
+        <input
+          type="range"
+          id="dockProgressSlider"
+          class="dock-scrub-slider"
+          min="0"
+          max="0"
+          value="0"
+          step="1"
+          style="--val-pct: 0%;"
+          aria-label="Позиция по фразам рукописи"
+          oninput="window.AuraApp.seekToIndex(this.value)"
+        />
+        <span class="dock-counter pct mono-tabular" id="lblProgressPercent">0%</span>
+      </div>
+
+      <!-- Основной ярус консоли -->
+      <div class="dock-console-row">
+
+        <!-- Левое крыло: статус, двухдековая телеметрия (ДЕКА A / ДЕКА B) и бегущая строка фразы -->
+        <div class="dock-wing-left">
+          <div class="telemetry-strip">
+            <span class="status-badge" id="lblStateBadge">
+              <span class="status-led"></span>
+              <span id="lblStateText">ДЕКА A · ОЖИДАНИЕ · СРЕЗ СТЫКА 140 МС</span>
+            </span>
+
+            <span class="dual-deck-indicator" title="Индикатор активной и резервной аудиодеки">
+              <span class="deck-slot active-deck" id="deckSlotA">ДЕКА A</span>
+              <span>/</span>
+              <span class="deck-slot" id="deckSlotB">ДЕКА B</span>
+            </span>
+          </div>
+
+          <div class="status-sentence" id="lblCurrentSentence">
+            Загрузите рукопись или вставьте текст из буфера обмена для начала чтения
+          </div>
+        </div>
+
+        <!-- Центральное ядро: тактильные транспортные клавиши -->
+        <div class="transport-core">
+          <button type="button" class="btn-transport" onclick="window.AuraApp.prev()" title="Предыдущая фраза (Стрелка влево)" aria-label="Пред.">
+            <svg><use href="#ico-prev"></use></svg>
+          </button>
+
+          <button type="button" class="btn-circle-main" id="btnMainPlay" onclick="window.AuraApp.togglePlay()" title="Слушать с выбранной фразы (Пробел)" aria-label="Старт или Пауза">
+            <svg id="icoMainPlaySvg"><use href="#ico-play"></use></svg>
+          </button>
+
+          <button type="button" class="btn-transport" onclick="window.AuraApp.next()" title="Следующая фраза (Стрелка вправо)" aria-label="След.">
+            <svg><use href="#ico-next"></use></svg>
+          </button>
+
+          <button type="button" class="btn-transport" onclick="window.AuraApp.stop()" title="Остановить воспроизведение" aria-label="Стоп">
+            <svg><use href="#ico-stop"></use></svg>
+          </button>
+
+          <button type="button" class="btn-transport" onclick="window.AuraApp.toggleOled(true)" title="Карманный экран OLED с защитой от нажатий" aria-label="Карманный OLED">
+            <svg><use href="#ico-oled"></use></svg>
+          </button>
+
+          <button type="button" class="btn" id="btnExitFocusDock" onclick="window.AuraApp.toggleFocus()" title="Выйти из режима фокуса (Escape)">
+            <svg><use href="#ico-close"></use></svg>
+            <span>Выход из фокуса</span>
+          </button>
+        </div>
+
+        <!-- Правое крыло: аппаратные селекторы голоса и скорости -->
+        <div class="dock-wing-right">
+          <div class="select-shell voice-select-wrap">
+            <select aria-label="Голос для чтения" id="selectVoiceEngine" class="hardware-select" title="Выбор голосового тракта" onchange="window.AuraApp.onVoiceChange(this.value)"><option value="auto">Авто · русский голос устройства</option></select>
+            <svg class="select-chevron"><use href="#ico-chevron-down"></use></svg>
+          </div>
+
+          <div class="select-shell rate-select-wrap">
+            <select aria-label="Скорость чтения" id="selectRate" class="hardware-select" title="Скорость чтения" onchange="window.AuraApp.setRate(this.value)">
+              <option value="0.80">0.80x</option>
+              <option value="0.90">0.90x</option>
+              <option value="0.95" selected>0.95x</option>
+              <option value="1.00">1.00x</option>
+              <option value="1.10">1.10x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.50">1.50x</option>
+            </select>
+            <svg class="select-chevron"><use href="#ico-chevron-down"></use></svg>
+          </div>
+        </div>
+
+      </div>
+    </footer>
+  </div>
+
+  <!-- ========================================================================
+       4. МОДАЛЬНЫЙ РЕДАКТОР РУКОПИСИ И ИМПОРТА ФАЙЛОВ (#editorDrawer)
+       ======================================================================== -->
+  <div id="editorDrawer" class="modal-backdrop" onclick="if(event.target === this) window.AuraApp.toggleEditor(false)" hidden>
+    <section class="modal-surface" role="dialog" aria-modal="true" aria-labelledby="editorModalTitle">
+      <header class="modal-header">
+        <div class="modal-title-group">
+          <span class="section-eyebrow">Буфер рукописи · Локальное хранилище</span>
+          <h2 class="modal-title" id="editorModalTitle">Редактор рукописи и импорт файлов</h2>
+        </div>
+        <button type="button" class="btn" onclick="window.AuraApp.toggleEditor(false)">
+          <svg><use href="#ico-close"></use></svg>
+          <span>Закрыть</span>
+        </button>
+      </header>
+
+      <div class="editor-toolbar">
+        <input type="file" id="fileImportInput" accept=".txt,.md,.html,.htm" style="display:none" onchange="window.AuraApp.importTextFile(event)" />
+
+        <button type="button" class="btn primary" onclick="document.getElementById('fileImportInput').click()">
+          <svg><use href="#ico-upload"></use></svg>
+          <span>Импорт файла (.txt, .md, .html)</span>
+        </button>
+
+        <button type="button" class="btn" onclick="window.AuraApp.pasteIntoEditorArea()">
+          <svg><use href="#ico-clipboard"></use></svg>
+          <span>Вставить из буфера</span>
+        </button>
+
+        <button type="button" class="btn danger-subtle" id="btnClearEditor" onclick="window.AuraApp.clearEditorArea()">
+          <svg><use href="#ico-clear"></use></svg>
+          <span>Очистить поле</span>
+        </button>
+
+        <button type="button" class="btn" onclick="window.AuraApp.exportText()">Скачать TXT</button>
+        <input aria-label="Заголовок рукописи" type="text" id="editDocTitle" class="editor-title-input" placeholder="Заголовок рукописи..." />
+      </div>
+
+      <div id="editorDropZone" class="editor-dropzone-bar">
+        <span>Перетащите файл .txt, .md или .html в эту область для автоматической очистки разметки</span>
+        <span class="mono-tabular" id="editorLiveStats">0 слов · 0 сегментов</span>
+      </div>
+
+      <textarea
+        aria-label="Текст рукописи" id="editorTextarea"
+        class="editor-textarea"
+        placeholder="Лист ожидает рукопись. Вставьте текст из буфера обмена или перетащите файл на страницу."
+      ></textarea>
+
+      <footer class="modal-footer">
+        <span id="storageStatus" style="font-size: 12px; color: var(--text-secondary);">
+          Черновик сохраняется отдельно; текст применяется кнопкой ниже.
+        </span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn" onclick="window.AuraApp.saveEditorText(false)">
+            <span>Применить текст</span>
+          </button>
+          <button type="button" class="btn primary" onclick="window.AuraApp.saveEditorText(true)">
+            <svg><use href="#ico-play"></use></svg>
+            <span>Применить и слушать</span>
+          </button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <!-- ========================================================================
+       5. СТУДИЙНАЯ КАЛИБРОВКА АКУСТИКИ И ТИПОГРАФИКИ (#studioDrawer)
+       ======================================================================== -->
+  <div id="studioDrawer" class="modal-backdrop" onclick="if(event.target === this) window.AuraApp.toggleStudio(false)" hidden>
+    <section class="modal-surface" role="dialog" aria-modal="true" aria-labelledby="studioModalTitle">
+      <header class="modal-header">
+        <div class="modal-title-group">
+          <span class="section-eyebrow">Калибровка тракта · Оптический комфорт</span>
+          <h2 class="modal-title" id="studioModalTitle">Голос, паузы и типографика</h2>
+        </div>
+        <button type="button" class="btn" onclick="window.AuraApp.toggleStudio(false)">
+          <svg><use href="#ico-close"></use></svg>
+          <span>Закрыть</span>
+        </button>
+      </header>
+
+      <div class="studio-grid">
+
+        <!-- Карта 1: Акустика и срез стыков -->
+        <div class="studio-card">
+          <div class="section-eyebrow">Голос и паузы</div>
+
+          <div class="studio-control-row">
+            <div class="studio-label-line">
+              <span>Высота тона (Тембр)</span>
+              <span class="studio-val-readout" id="lblPitch">1.00</span>
+            </div>
+            <input
+              type="range"
+              class="range-slider"
+              aria-label="Высота тона" id="rangePitch"
+              min="0.70"
+              max="1.30"
+              step="0.05"
+              value="1.00"
+              style="--val-pct: 50%;"
+              oninput="window.AuraApp.setPitch(this.value)"
+            />
+          </div>
+
+          <div class="studio-control-row">
+            <div class="studio-label-line">
+              <span>Уровень громкости</span>
+              <span class="studio-val-readout" id="lblVolume">100%</span>
+            </div>
+            <input
+              type="range"
+              class="range-slider"
+              aria-label="Громкость" id="rangeVolume"
+              min="0.00"
+              max="1.00"
+              step="0.05"
+              value="1.00"
+              style="--val-pct: 100%;"
+              oninput="window.AuraApp.setVolume(this.value)"
+            />
+          </div>
+
+          <div class="studio-control-row">
+            <div class="studio-label-line">
+              <span>Пауза между предложениями</span>
+              <span class="studio-val-readout" id="lblPauseMs">400 мс</span>
+            </div>
+            <input
+              type="range"
+              class="range-slider"
+              aria-label="Пауза между предложениями" id="rangePauseMs"
+              min="-2000"
+              max="2000"
+              step="50"
+              value="400"
+              style="--val-pct: 60%;"
+              oninput="window.AuraApp.setPauseMs(this.value)"
+            />
+            <p class="pause-help">Положительные значения добавляют паузу; отрицательные запускают следующую сетевую фразу раньше. При неподготовленном аудио переход может задержаться. Голоса устройства не поддерживают наложение.</p>
+          </div>
+
+          <div class="studio-control-row">
+            <label class="studio-label-line" for="selectPreviewVoice">Голос для предпрослушивания и чтения</label>
+            <div class="select-shell studio-voice-select">
+              <select id="selectPreviewVoice" class="hardware-select" onchange="window.AuraApp.onVoiceChange(this.value)">
+                <option value="auto">Авто · русский голос устройства</option>
+              </select>
+              <svg class="select-chevron"><use href="#ico-chevron-down"></use></svg>
+            </div>
+          </div>
+
+          <p id="edgeVoiceStatus" class="pause-help" role="status"></p>
+          <div class="bridge-actions">
+            <button id="browserVoicesRefresh" class="btn" type="button" onclick="window.AuraApp.refreshBrowserVoices()" hidden>Обновить список голосов</button>
+            <a id="bridgeOpenLink" class="btn" href="http://127.0.0.1:17843/">Открыть через мост</a>
+            <button id="bridgeRetry" class="btn" type="button" onclick="window.AuraApp.refreshBridge()" hidden>Обновить подключение</button>
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 4px;">
+            <button type="button" class="btn primary" id="btnPreviewVoice" style="flex: 1;" onclick="window.AuraApp.previewSelectedVoice()">
+              <svg><use href="#ico-wave"></use></svg>
+              <span>Прослушать пробу голоса</span>
+              <span class="eq-bars" aria-hidden="true">
+                <span class="eq-bar"></span>
+                <span class="eq-bar"></span>
+                <span class="eq-bar"></span>
+                <span class="eq-bar"></span>
+              </span>
+            </button>
+
+            <button type="button" class="btn" id="btnStopPreview" onclick="window.AuraApp.stopPreview()" title="Остановить пробу голоса">
+              <svg><use href="#ico-stop"></use></svg>
+            </button>
+          </div>
+
+          <div id="previewStatusText" class="mono-tabular" style="font-size: 11px; color: var(--text-secondary); min-height: 16px;">
+            Изолированный канал пробы готов к тесту
+          </div>
+        </div>
+
+        <!-- Карта 2: Типографика и таймер сна -->
+        <div class="studio-card">
+          <div class="section-eyebrow">Типографика листа и таймер сна</div>
+
+          <div class="studio-control-row">
+            <div class="studio-label-line">
+              <span>Кегль наборного шрифта</span>
+              <span class="studio-val-readout" id="lblFontSize">21px</span>
+            </div>
+            <input
+              type="range"
+              class="range-slider"
+              aria-label="Размер шрифта" id="rangeFontSize"
+              min="16"
+              max="28"
+              step="1"
+              value="21"
+              style="--val-pct: 41.6%;"
+              oninput="window.AuraApp.setFontSize(this.value)"
+            />
+          </div>
+
+          <label class="tactile-toggle-row" for="chkAutoScroll">
+            <div>
+              <div style="font-size: 13px; color: var(--text-primary); font-weight: 500;">Оптическое ведение строки</div>
+              <div style="font-size: 11px; color: var(--text-secondary);">Плавная центровка активного абзаца при чтении</div>
+            </div>
+            <span class="tactile-switch">
+              <input type="checkbox" id="chkAutoScroll" checked onchange="window.AuraApp.setAutoScroll(this.checked)" />
+              <span class="tactile-track">
+                <span class="tactile-thumb"></span>
+              </span>
+            </span>
+          </label>
+
+          <div class="studio-control-row">
+            <div class="studio-label-line">
+              <span>Таймер автоматической паузы</span>
+              <span class="studio-val-readout" id="lblSleepTimer">Выкл</span>
+            </div>
+            <div class="sleep-pills-grid">
+              <button type="button" class="btn sleep-pill active" data-sleep="0" onclick="window.AuraApp.setSleepTimer(0)">Выкл</button>
+              <button type="button" class="btn sleep-pill" data-sleep="15" onclick="window.AuraApp.setSleepTimer(15)">15 м</button>
+              <button type="button" class="btn sleep-pill" data-sleep="30" onclick="window.AuraApp.setSleepTimer(30)">30 м</button>
+              <button type="button" class="btn sleep-pill" data-sleep="60" onclick="window.AuraApp.setSleepTimer(60)">60 м</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- ========================================================================
+       6. КАРМАННЫЙ ЭКРАН БЛОКИРОВКИ ZERO-LUX OLED (#oledOverlay)
+       Строгий запрет разблокировки по клику на фон; выход только удержанием 900 мс или Escape
+       ======================================================================== -->
+  <div id="oledOverlay" class="oled-saver" role="dialog" aria-modal="true" aria-label="Карманный режим" hidden>
+    <div class="oled-frame">
+      <div class="section-eyebrow" style="color: #737373; display: inline-flex; align-items: center; gap: 6px;">
+        <svg style="width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.5; fill: none;"><use href="#ico-lock"></use></svg>
+        <span>КАРМАННЫЙ РЕЖИМ ZERO-LUX OLED</span>
+      </div>
+
+      <div id="oledCurrentPhrase" class="oled-phrase-readout">
+        Нажмите Старт для озвучивания текущей фразы
+      </div>
+
+      <div class="oled-transport-row">
+        <button type="button" class="btn-oled-wireframe" onclick="window.AuraApp.prev()">
+          <svg><use href="#ico-prev"></use></svg>
+          <span>Предыдущая</span>
+        </button>
+
+        <button type="button" class="btn-oled-wireframe primary-wire" id="oledPlayBtn" onclick="window.AuraApp.togglePlay()">
+          <svg id="icoOledPlaySvg"><use href="#ico-play"></use></svg>
+          <span id="lblOledPlayText">Старт / Пауза</span>
+        </button>
+
+        <button type="button" class="btn-oled-wireframe" onclick="window.AuraApp.next()">
+          <svg><use href="#ico-next"></use></svg>
+          <span>Следующая</span>
+        </button>
+      </div>
+
+      <button type="button" class="btn-hold-unlock" id="btnHoldUnlock">
+        <svg class="hold-ring-svg" viewBox="0 0 36 36" aria-hidden="true">
+          <circle class="hold-ring-track" cx="18" cy="18" r="15.9155"></circle>
+          <circle class="hold-ring-progress" id="oledHoldRingPath" cx="18" cy="18" r="15.9155"></circle>
+        </svg>
+        <span id="lblHoldUnlockText">Удерживайте 1 сек для разблокировки</span>
+      </button>
+    </div>
+  </div>
+<!-- ========================================================================
+       ЯДРО ПРИЛОЖЕНИЯ: SMART NEURAL BRIDGE, ПАРСЕР И ДВУХДЕКОВЫЙ PING-PONG ДВИЖОК
+       ======================================================================== -->
+  <script>
+// Direct Microsoft Read Aloud transport. No account keys, relay or external scripts.
+(function microsoftRuntime(frameChannel) {
+  'use strict';
+  const client='6A5AA1D4EAFF4E9FB37E23D68491D6F4';
+  const endpoints=[
+    'wss://api.msedgeservices.com/tts/cognitiveservices/websocket/v1?Ocp-Apim-Subscription-Key=',
+    'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken='
+  ];
+  const known=new Set(['ru-RU-DmitryNeural','ru-RU-SvetlanaNeural']);
+  const encoder=new TextEncoder(),decoder=new TextDecoder();
+  const hex=bytes=>Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+  const multiply=(a,b)=>Math.imul(a,b)>>>0;
+  const swap=n=>((n<<16)|(n>>>16))>>>0;
+  const rotate=(n,b)=>(n>>>b)|(n<<(32-b));
+
+  // The small SHA-256 implementation also works in local-file WebViews without crypto.subtle.
+  function sha256(input) {
+    const constants=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+    const state=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
+    const padded=new Uint8Array(Math.ceil((input.length+9)/64)*64),view=new DataView(padded.buffer),words=new Uint32Array(64);
+    padded.set(input);padded[input.length]=0x80;view.setUint32(padded.length-4,input.length*8);
+    for(let offset=0;offset<padded.length;offset+=64) {
+      for(let i=0;i<16;i++)words[i]=view.getUint32(offset+i*4);
+      for(let i=16;i<64;i++) {
+        const x=words[i-15],y=words[i-2];
+        words[i]=(words[i-16]+(rotate(x,7)^rotate(x,18)^(x>>>3))+words[i-7]+(rotate(y,17)^rotate(y,19)^(y>>>10)))>>>0;
+      }
+      let [a,b,c,d,e,f,g,h]=state;
+      for(let i=0;i<64;i++) {
+        const t=(h+(rotate(e,6)^rotate(e,11)^rotate(e,25))+((e&f)^(~e&g))+constants[i]+words[i])>>>0;
+        const u=((rotate(a,2)^rotate(a,13)^rotate(a,22))+((a&b)^(a&c)^(b&c)))>>>0;
+        h=g;g=f;f=e;e=(d+t)>>>0;d=c;c=b;b=a;a=(t+u)>>>0;
+      }
+      [a,b,c,d,e,f,g,h].forEach((n,i)=>{state[i]=(state[i]+n)>>>0;});
+    }
+    const result=new Uint8Array(32),out=new DataView(result.buffer);
+    state.forEach((n,i)=>out.setUint32(i*4,n));return result;
+  }
+  function validationCode(milliseconds=Date.now()) {
+    let seconds=Math.floor(milliseconds/1000)+11644473600;seconds-=seconds%300;
+    const data=encoder.encode('Copyright (C) Microsoft Corporation. All rights reserved.'+String(BigInt(seconds)*10000000n)+client);
+    const hash=sha256(data),digest=new DataView(hash.buffer);
+    const a=digest.getUint32(0,true)|1,b=digest.getUint32(4,true)|1;
+    const padded=new Uint8Array(Math.ceil(data.length/8)*8);padded.set(data);const words=new DataView(padded.buffer);
+    let total=0,last=0,state=0,chain=0;
+    for(let i=0;i<padded.length;i+=8) {
+      const x=words.getUint32(i,true),y=words.getUint32(i+4,true);
+      let q=multiply(swap((multiply(swap(x),0xef0569fb)+multiply(x,a))>>>0),0x76f50f34);
+      total=(total+multiply(swap(q),0xc3efea97)+q)>>>0;
+      q=multiply(swap((multiply(swap(y),0xc31713db)+multiply(y,b))>>>0),0x1881ce3c);
+      last=(multiply(swap(q),0x35bd1ec9)+q)>>>0;total=(total+last)>>>0;
+      state=multiply((state+x)>>>0,a);
+      for(const coefficient of [0xcf98b111,0x87085b9f,0x12ceb96d,0x257e1d83])state=multiply(swap(state),coefficient);
+      let t=multiply((state+y)>>>0,b);t=multiply(swap(t),0xa27416f5);t=swap(multiply(swap(t),0xd38396ff));
+      chain=(chain+state)>>>0;state=multiply(swap(multiply(t,0x7c932b89)),0xbfa49f69);chain=(chain+state)>>>0;
+    }
+    const prefix=new Uint8Array(8),view=new DataView(prefix.buffer);view.setUint32(0,(last^state)>>>0,true);view.setUint32(4,(total^chain)>>>0,true);
+    return hex(prefix)+'-'+hex(hash);
+  }
+  function requestId() {
+    const bytes=new Uint8Array(16);
+    if(globalThis.crypto?.getRandomValues)crypto.getRandomValues(bytes);
+    else for(let i=0;i<bytes.length;i++)bytes[i]=Math.floor(Math.random()*256);
+    return hex(bytes);
+  }
+  const escape=text=>text.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;'}[c]));
+  function parts(text) {
+    const result=[];let piece='',bytes=0;
+    for(const char of text.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g,'')) {
+      const count=encoder.encode(escape(char)).length;
+      if(bytes+count>400) {
+        const space=piece.lastIndexOf(' ');
+        const cut=space>0&&encoder.encode(escape(piece.slice(space+1))).length+count<=400?space+1:piece.length;
+        result.push(piece.slice(0,cut));piece=piece.slice(cut);bytes=encoder.encode(escape(piece)).length;
+      }
+      piece+=char;bytes+=count;
+    }
+    if(piece.trim())result.push(piece);return result;
+  }
+  function turn(voice,text,rate,pitch,route) {
+    return new Promise((resolve,reject)=>{
+      const id=requestId(),chunks=[];let settled=false,opened=false,metadata=false,size=0,timer,totalTimer;
+      let socket;
+      try{socket=new WebSocket(endpoints[route]+client+'&ConnectionId='+requestId()+'&Sec-MS-GEC='+validationCode()+'&Sec-MS-GEC-Version=2-143.0.3650.75');}
+      catch(error){reject(new Error('[MS-INIT] Браузер не создал подключение Microsoft: '+error.name+'.'));return;}
+      socket.binaryType='arraybuffer';
+      const finish=(error,result)=>{
+        if(settled)return;settled=true;clearTimeout(timer);clearTimeout(totalTimer);
+        socket.onmessage=socket.onerror=socket.onclose=socket.onopen=null;socket.close();
+        if(error)reject(error);else resolve(result);
+      };
+      const wait=()=>{clearTimeout(timer);timer=setTimeout(()=>finish(new Error('[MS-TIMEOUT] '+(opened?'Microsoft не завершил передачу аудио.':'Нет ответа при подключении к Microsoft.'))),18000);};
+      wait();totalTimer=setTimeout(()=>finish(new Error('[MS-TIMEOUT] Превышено время синтеза фразы Microsoft.')),45000);
+      socket.onopen=()=>{
+        opened=true;wait();const stamp=new Date().toUTCString();
+        try {
+          socket.send('X-Timestamp:'+stamp+'\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n'+JSON.stringify({context:{synthesis:{audio:{metadataoptions:{sentenceBoundaryEnabled:'true',wordBoundaryEnabled:'false'},outputFormat:'audio-24khz-48kbitrate-mono-mp3'}}}})+'\r\n');
+          const name='Microsoft Server Speech Text to Speech Voice ('+voice.slice(0,5)+', '+voice.slice(6)+')';
+          const signed=n=>(n>=0?'+':'')+n;
+          const ssml="<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'><voice name='"+name+"'><prosody pitch='"+signed(Math.round((pitch-1)*80))+"Hz' rate='"+signed(Math.round((rate-1)*100))+"%' volume='+0%'>"+escape(text)+"</prosody></voice></speak>";
+          socket.send('X-RequestId:'+id+'\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:'+stamp+'Z\r\nPath:ssml\r\n\r\n'+ssml);
+        }catch(_){finish(new Error('[MS-SEND] Не удалось отправить запрос озвучки Microsoft.'));}
+      };
+      socket.onmessage=event=>{
+        wait();
+        if(typeof event.data==='string') {
+          if(event.data.includes('Path:audio.metadata'))metadata=true;
+          if(event.data.includes('Path:turn.end')) {
+            if(size<1000||!metadata)finish(new Error('[MS-INCOMPLETE] Microsoft завершил запрос без полной записи выбранного голоса. Получено аудио: '+size+' байт; метаданные: '+(metadata?'да':'нет')+'.'));
+            else finish(null,new Blob(chunks,{type:'audio/mpeg'}));
+          }
+          return;
+        }
+        const data=new Uint8Array(event.data);
+        if(data.length<2){finish(new Error('[MS-PACKET] Повреждён аудиопакет Microsoft.'));return;}
+        const length=(data[0]<<8)|data[1];
+        if(length+2>data.length){finish(new Error('[MS-PACKET] Неполный аудиопакет Microsoft.'));return;}
+        const header=decoder.decode(data.subarray(2,2+length));
+        if(header.includes('Path:audio')&&header.includes('audio/mpeg')) {
+          const audio=data.slice(2+length);chunks.push(audio);size+=audio.length;
+          if(size>8*1024*1024)finish(new Error('Аудиозапись Microsoft слишком большая.'));
+        }
+      };
+      socket.onerror=()=>finish(new Error(opened?'[MS-TRANSFER] Соединение открыто, но передача аудио Microsoft прервана.':'[MS-CONNECT] Прямое соединение с Microsoft не установлено. Это ошибка подключения, а не разрешения на воспроизведение.'));
+      socket.onclose=event=>finish(new Error('[MS-CLOSE] Microsoft закрыл соединение до окончания фразы. Код закрытия: '+event.code+'. Получено аудио: '+size+' байт.'));
+    });
+  }
+  class DirectMicrosoft {
+    static validationCode=validationCode;
+    constructor(paced=false){this.queue=Promise.resolve();this.paced=paced;this.nextRequestAt=0;}
+    synthesize(voice,text,rate=1,pitch=1) {
+      if(!known.has(voice))return Promise.reject(new Error('Этот голос Microsoft не поддерживается.'));
+      if(!text.trim())return Promise.reject(new Error('Нет текста для озвучки.'));
+      const perform=async()=>{
+        const audio=[];let size=0;
+        for(const piece of parts(text)) {
+          let complete;const errors=[];
+          for(const route of (this.paced?[0,1,0]:[0,1])) {
+            if(this.paced){const delay=Math.max(0,this.nextRequestAt-Date.now());if(delay)await new Promise(resolve=>setTimeout(resolve,delay));}
+            try{complete=await turn(voice,piece,rate,pitch,route);break;}catch(error){errors.push(error.message+' Маршрут: '+(route===0?'Microsoft Edge':'Bing')+'.');}
+            finally{if(this.paced)this.nextRequestAt=Date.now()+3000;}
+          }
+          if(!complete)throw new Error([...new Set(errors)].join(' | '));
+          audio.push(complete);size+=complete.size;
+          if(size>24*1024*1024)throw new Error('Предложение слишком длинное для одной записи.');
+        }
+        return {blob:new Blob(audio,{type:'audio/mpeg'}),parts:audio.length};
+      };
+      const result=this.queue.then(perform,perform);this.queue=result.catch(()=>{});return result;
+    }
+  }
+  // A sandboxed document has its own opaque origin, independent of Edge's external-file page.
+  const framePrefix='tishe-microsoft-';
+  const child=window.parent!==window&&typeof frameChannel==='string'&&frameChannel.startsWith(framePrefix);
+  if(child){
+    const channel=frameChannel,engine=new DirectMicrosoft(true);
+    const reply=data=>window.parent.postMessage({channel,...data},'*');
+    window.addEventListener('message',event=>{
+      const data=event.data;
+      if(event.source!==window.parent||!data||data.channel!==channel||data.type!=='synthesize'||!Number.isSafeInteger(data.id))return;
+      if(typeof data.text!=='string'||!known.has(data.voice)||!Number.isFinite(data.rate)||!Number.isFinite(data.pitch)){
+        reply({type:'result',id:data.id,error:'[MS-REQUEST] Некорректный запрос озвучки.'});return;
+      }
+      engine.synthesize(data.voice,data.text,data.rate,data.pitch).then(async result=>{
+        const buffer=await result.blob.arrayBuffer();
+        window.parent.postMessage({channel,type:'result',id:data.id,buffer,parts:result.parts},'*',[buffer]);
+      }).catch(error=>reply({type:'result',id:data.id,error:error.message}));
+    });
+    reply({type:'ready'});
+    return;
+  }
+  class MicrosoftClient {
+    static validationCode=validationCode;
+    constructor(){
+      this.direct=new DirectMicrosoft();this.pending=new Map();this.sequence=0;this.frameReady=null;
+      const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||navigator.maxTouchPoints>1&&/Mac/i.test(navigator.platform);
+      this.isolated=ios&&(/^(?:file|edge):$/.test(location.protocol)||/external-file/i.test(location.href));
+    }
+    ensureFrame(){
+      if(this.frameReady)return this.frameReady;
+      this.frameReady=new Promise((resolve,reject)=>{
+        const channel=framePrefix+requestId(),frame=document.createElement('iframe');
+        this.frame=frame;this.channel=channel;
+        frame.name=channel;frame.title='Сетевой синтез Microsoft';frame.hidden=true;
+        frame.setAttribute('sandbox','allow-scripts');frame.setAttribute('aria-hidden','true');
+        const listener=event=>{
+          const data=event.data;
+          if(event.source!==frame.contentWindow||event.origin!=='null'||!data||data.channel!==channel)return;
+          if(data.type==='ready'){clearTimeout(timer);resolve();return;}
+          if(data.type!=='result')return;
+          const pending=this.pending.get(data.id);if(!pending)return;
+          clearTimeout(pending.timer);this.pending.delete(data.id);
+          if(typeof data.error==='string'){pending.reject(new Error('[MS-ISOLATED] '+data.error));return;}
+          if(!(data.buffer instanceof ArrayBuffer)||data.buffer.byteLength<1000||data.buffer.byteLength>24*1024*1024||!Number.isSafeInteger(data.parts)||data.parts<1){
+            pending.reject(new Error('[MS-ISOLATED-AUDIO] Изолированный канал не вернул полную запись.'));return;
+          }
+          pending.resolve({blob:new Blob([data.buffer],{type:'audio/mpeg'}),parts:data.parts,transport:'isolated-document'});
+        };
+        window.addEventListener('message',listener);
+        const timer=setTimeout(()=>{
+          window.removeEventListener('message',listener);frame.remove();this.frameReady=null;
+          reject(new Error('[MS-FRAME-INIT] Edge не запустил изолированную сетевую страницу.'));
+        },8000);
+        const markup='<!doctype html><meta charset="utf-8"><script>('+microsoftRuntime.toString()+')('+JSON.stringify(channel)+');<'+'/script>';
+        frame.src='data:text/html;charset=utf-8,'+encodeURIComponent(markup);
+        document.body.append(frame);
+      });
+      return this.frameReady;
+    }
+    async synthesize(voice,text,rate=1,pitch=1){
+      if(!this.isolated)return this.direct.synthesize(voice,text,rate,pitch);
+      if(!known.has(voice))throw new Error('Этот голос Microsoft не поддерживается.');
+      if(typeof text!=='string'||!text.trim())throw new Error('Нет текста для озвучки.');
+      await this.ensureFrame();
+      return new Promise((resolve,reject)=>{
+        const id=++this.sequence;
+        const timer=setTimeout(()=>{this.pending.delete(id);reject(new Error('[MS-ISOLATED-TIMEOUT] Изолированный канал не завершил синтез вовремя.'));},95000);
+        this.pending.set(id,{resolve,reject,timer});
+        try{this.frame.contentWindow.postMessage({channel:this.channel,type:'synthesize',id,voice,text,rate,pitch},'*');}
+        catch(error){clearTimeout(timer);this.pending.delete(id);reject(new Error('[MS-FRAME-SEND] Не удалось передать запрос в сетевой канал: '+error.name+'.'));}
+      });
+    }
+  }
+  window.TisheMicrosoftDirect=MicrosoftClient;
+})();
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const synth = window.speechSynthesis || null;
+  const directMicrosoft=new window.TisheMicrosoftDirect();
+  const ios=/iPad|iPhone|iPod/i.test(navigator.userAgent)||navigator.maxTouchPoints>1&&/Mac/i.test(navigator.platform);
+  const mobileEdge=/EdgA\/|EdgiOS\//i.test(navigator.userAgent)||/Edg\//i.test(navigator.userAgent)&&navigator.maxTouchPoints>1&&/Mac/i.test(navigator.platform);
+  const microsoftVoices=[{id:'ru-RU-DmitryNeural',name:'Дмитрий'},{id:'ru-RU-SvetlanaNeural',name:'Светлана'}];
+  const bridgeConfig = window.__TISHE_BRIDGE__;
+  const bridge = bridgeConfig?.baseUrl==='http://127.0.0.1:17843/' && /^[A-F0-9]{64}$/.test(bridgeConfig.token||'') ? bridgeConfig : null;
+  let bridgeVoices=[], bridgeError='', bridgeState=bridge?'loading':'offline';
+  const KEY = 'aura_reader_state_v4';
+  const LIMIT = 1000000;
+  const MAX_CHUNK = 180;
+  const decks = [$('neuralAudioA'), $('neuralAudioB')];
+  const overlapping = new Set();
+  const cache = new Map();
+  const inflight = new Map();
+  let doc = {title:'Рукопись не загружена',text:''};
+  let draft = {title:'',text:''};
+  let settings = {voice:bridge?'edge:ru-RU-DmitryNeural':'auto',rate:0.95,pitch:1,volume:1,trim:140,pauseMs:400,fontSize:21,autoScroll:true,theme:0};
+  let segments = [], voices = [], index = 0, completed = false;
+  let mode = 'IDLE', generation = 0, job = null, preview = null, deck = 0;
+  let saveTimer, draftTimer, sleepInterval, sleepDeadline = 0, wake = null;
+  let savedFocus = null, cloudDeadUntil = 0, storageFailed = false;
+  let sourceLabel = '', sourceWarning = '', holdTimer = null, importVersion = 0;
+  const armed = new Map();
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp = (v,min,max,fallback) => Number.isFinite(Number(v)) ? Math.max(min,Math.min(max,Number(v))) : fallback;
+  const active = () => mode === 'PLAYING' || mode === 'LOADING';
+  const allowedLanguage = lang => /^(?:ru|en)(?:[-_]|$)/i.test(lang);
+  const googleSelected = () => /^google_(?:ru|en)$/.test(settings.voice);
+  const edgeSelected = () => settings.voice.startsWith('edge:');
+  const directSelected = () => settings.voice.startsWith('online:')||settings.voice==='auto'&&mobileEdge&&!bridge&&!(ios&&voices.some(v=>nativeEdgeId(v)));
+  const directVoiceId = () => settings.voice.startsWith('online:')?settings.voice.slice(7):'ru-RU-DmitryNeural';
+  const networkSelected = () => directSelected()||edgeSelected()||googleSelected();
+  const selectedLanguage = () => directSelected()?'ru':edgeSelected()?settings.voice.slice(5,7):settings.voice==='google_en'?'en':settings.voice==='google_ru'?'ru':chooseVoice()?.lang?.split(/[-_]/)[0]||'ru';
+
+  function notice(message, error=false, showDock=error) {
+    $('appNotice').textContent = message;
+    $('appNotice').classList.toggle('is-error',error);
+    const dockMessage=$('dockAudioMessage');
+    if(dockMessage){dockMessage.textContent=showDock?message:'';dockMessage.hidden=!showDock;dockMessage.classList.toggle('is-error',error);}
+  }
+  function fill(el) {
+    const min=Number(el.min),max=Number(el.max);
+    el.style.setProperty('--val-pct', (max>min ? (Number(el.value)-min)/(max-min)*100 : 0)+'%');
+  }
+  function layout() {
+    document.documentElement.style.setProperty('--layout-top-pad',($('topHeaderBar').offsetHeight+24)+'px');
+    document.documentElement.style.setProperty('--layout-bottom-pad',($('bottomDockWrapper').offsetHeight+36)+'px');
+  }
+  function persistNow() {
+    clearTimeout(saveTimer);
+    try {
+      localStorage.setItem(KEY,JSON.stringify({version:6,doc,draft,settings,index,completed}));
+      storageFailed=false;
+      $('storageStatus').textContent='Черновик сохраняется отдельно; текст применяется кнопкой ниже.';
+    } catch (_) {
+      storageFailed=true;
+      $('storageStatus').textContent='Браузер не сохранил текст. Скачай копию перед закрытием.';
+      notice('Локальное сохранение недоступно или память заполнена. Скачай копию текста.',true);
+    }
+  }
+  function persist() { clearTimeout(saveTimer);saveTimer=setTimeout(persistNow,250); }
+  function restore() {
+    try {
+      const raw=localStorage.getItem(KEY);
+      let saved=raw?JSON.parse(raw):null;
+      if (!saved) {
+        const old=JSON.parse(localStorage.getItem('aura_reader_state_v3')||'null');
+        if(old) saved={doc:old.customDoc,draft:old.customDoc,index:old.currentIndex,
+          settings:{rate:old.rate,pitch:old.pitch,volume:old.volume,trim:old.trimOverlapMs,fontSize:old.fontSize,autoScroll:old.autoScroll,theme:old.themeIdx,voice:'auto'}};
+      }
+      if(!saved || typeof saved!=='object')return;
+      if(typeof saved.doc?.text==='string')doc={text:saved.doc.text.slice(0,LIMIT),title:String(saved.doc.title||'Рукопись').slice(0,200)};
+      draft=typeof saved.draft?.text==='string'?{text:saved.draft.text.slice(0,LIMIT),title:String(saved.draft.title||'').slice(0,200)}:{...doc};
+      const s=saved.settings||{};
+      settings={voice:typeof s.voice==='string'?s.voice:'auto',rate:clamp(s.rate,0.8,1.5,0.95),pitch:clamp(s.pitch,0.7,1.3,1),volume:clamp(s.volume,0,1,1),trim:clamp(s.trim,0,280,140),pauseMs:clamp(s.pauseMs,-2000,2000,400),fontSize:clamp(s.fontSize,16,28,21),autoScroll:typeof s.autoScroll==='boolean'?s.autoScroll:true,theme:Math.trunc(clamp(s.theme,0,2,0))};
+      if(saved.version<6)settings.theme=0;
+      index=saved.version>=5?Math.trunc(clamp(saved.index,0,100000,0)):0;
+      completed=saved.version>=5&&saved.completed===true;
+      if(saved.version<5&&doc.text)notice('Рукопись сохранена. После перехода на целые предложения позиция чтения сброшена к началу.');
+    }catch(_){notice('Не удалось прочитать сохранение. Исходная запись не изменена.',true);}
+  }
+
+  // Visible blocks are complete sentences, not transport-size fragments.
+  function splitText(text) {
+    let segmenter=null;
+    try {segmenter=new Intl.Segmenter('ru',{granularity:'sentence'});}catch(_){}
+    const result=[];
+    text.replace(/\r\n?/g,'\n').split(/\n[\t ]*\n+/).forEach((paragraph,p) => {
+      paragraph=paragraph.replace(/\s+/gu,' ').trim();if(!paragraph)return;
+      const sentences=segmenter?Array.from(segmenter.segment(paragraph),s=>s.segment):(paragraph.match(/[^.!?…]+[.!?…»"]*|[.!?…]+/gu)||[paragraph]);
+      for(const sentence of sentences) {
+        const clean=sentence.trim();
+        if(clean)result.push({text:clean,p});
+      }
+    });
+    return result;
+  }
+  function render() {
+    segments=splitText(doc.text);
+    index=Math.min(Math.max(0,index),Math.max(0,segments.length-1));
+    const container=$('bookReadingContainer');container.replaceChildren();
+    const fragment=document.createDocumentFragment();let paragraph=null,last=-1;
+    segments.forEach((s,i)=>{
+      if(s.p!==last){paragraph=document.createElement('p');paragraph.className='reading-paragraph';fragment.append(paragraph);last=s.p;}
+      const span=document.createElement('span');span.id='seg-node-'+i;span.className='sentence-node';
+      span.textContent=s.text+' ';span.tabIndex=0;span.setAttribute('role','button');span.setAttribute('aria-label','Читать: '+s.text);
+      span.addEventListener('click',()=>seek(i,true));
+      span.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();seek(i,true);}});
+      paragraph.append(span);
+    });
+    container.append(fragment);
+    $('zeroStateMatrix').hidden=segments.length>0;container.hidden=!segments.length;
+    $('bookTitleHeading').textContent=segments.length?doc.title:'Рукопись не загружена';
+    $('headerDocPill').textContent=segments.length?doc.title:'Ожидание рукописи';
+    const words=doc.text.trim()?doc.text.trim().split(/\s+/u).length:0;
+    $('metaSentences').textContent='Фраз: '+segments.length;
+    $('metaWords').textContent='Слов: '+words;
+    $('metaTime').textContent='Звучание: ~'+(words?Math.max(1,Math.round(words/(140*settings.rate))):0)+' мин';
+    $('dockProgressSlider').max=Math.max(0,segments.length-1);
+    $('dockProgressSlider').disabled=!segments.length;
+    $('btnPlayFromSelected').disabled=!segments.length;
+    highlight(false);layout();
+  }
+  function highlight(scroll=true) {
+    document.querySelectorAll('.sentence-node.active').forEach(el=>{el.classList.remove('active');el.removeAttribute('aria-current');});
+    document.querySelectorAll('.active-paragraph').forEach(el=>el.classList.remove('active-paragraph'));
+    const node=$('seg-node-'+index);
+    if(node){node.classList.add('active');node.setAttribute('aria-current','true');node.parentElement.classList.add('active-paragraph');}
+    const total=segments.length,digits=Math.max(2,String(total).length);
+    $('lblProgressCounter').textContent=String(total?index+1:0).padStart(digits,'0')+' / '+String(total).padStart(digits,'0');
+    $('lblProgressPercent').textContent=(completed?100:total?Math.floor(index/total*100):0)+'%';
+    $('dockProgressSlider').value=index;fill($('dockProgressSlider'));
+    const phrase=segments[index]?.text||'Загрузи рукопись или вставь текст для начала чтения';
+    $('lblCurrentSentence').textContent=phrase;$('oledCurrentPhrase').textContent=phrase;
+    if(scroll && settings.autoScroll && active() && node && $('editorDrawer').hidden && $('studioDrawer').hidden && $('oledOverlay').hidden) {
+      const rect=node.getBoundingClientRect(),top=document.body.classList.contains('focus-mode')?24:$('topHeaderBar').getBoundingClientRect().bottom+20;
+      const bottom=innerHeight-$('bottomDockWrapper').offsetHeight-24;
+      if(rect.top<top||rect.bottom>bottom)window.scrollBy({top:rect.top-top-Math.max(0,(bottom-top-rect.height)/3),behavior:reducedMotion?'instant':'smooth'});
+    }
+  }
+  async function wakeLock() {
+    if(!navigator.wakeLock)return;
+    if(!active()||document.visibilityState!=='visible') {if(wake){const w=wake;wake=null;try{await w.release();}catch(_){}}return;}
+    if(wake)return;
+    try {
+      const w=await navigator.wakeLock.request('screen');
+      if(!active()||document.visibilityState!=='visible'||wake){await w.release();return;}
+      wake=w;w.addEventListener('release',()=>{if(wake===w)wake=null;});
+    }catch(_){}
+  }
+  function status(next,label='') {
+    mode=next;
+    const playing=active();
+    $('lblStateText').textContent=label||({IDLE:'ГОТОВО К ЧТЕНИЮ',LOADING:'ЗАГРУЗКА АУДИО',PLAYING:'ЧТЕНИЕ',PAUSED:'ПАУЗА',DONE:'ЧТЕНИЕ ЗАВЕРШЕНО',ERROR:'ОШИБКА ОЗВУЧИВАНИЯ'}[mode]);
+    $('lblStateBadge').classList.toggle('is-playing',playing);
+    $('lblStateBadge').classList.toggle('is-paused',mode==='PAUSED'||mode==='ERROR');
+    $('bookReadingContainer').classList.toggle('is-playing',playing);
+    for(const id of ['icoMainPlaySvg','icoOledPlaySvg'])$(id).querySelector('use').setAttribute('href',playing?'#ico-pause':'#ico-play');
+    $('lblOledPlayText').textContent=playing?'Пауза':'Старт';
+    $('btnMainPlay').setAttribute('aria-label',playing?'Приостановить чтение':'Начать или продолжить чтение');
+    $('btnPlayFromSelected').querySelector('span').textContent=playing?'Приостановить':'Слушать с выбранной фразы';
+    $('btnPlayFromSelected').querySelector('use').setAttribute('href',playing?'#ico-pause':'#ico-play');
+    if(navigator.mediaSession){try{navigator.mediaSession.playbackState=playing?'playing':mode==='PAUSED'?'paused':'none';}catch(_){}}
+    wakeLock();
+  }
+  function clearJob(j) {
+    if(!j)return;
+    clearTimeout(j.watchdog);clearTimeout(j.gapTimer);clearInterval(j.trimTimer);j.dead=true;
+    if(j.audio){j.audio.onended=j.audio.onerror=j.audio.onloadedmetadata=null;j.audio.pause();}
+    if(j.utterance){j.utterance.onend=j.utterance.onerror=j.utterance.onstart=j.utterance.onboundary=null;}
+  }
+  function stopPreview() {
+    const wasSynth=!!preview?.utterance;clearJob(preview);preview=null;
+    $('previewAudio').pause();$('btnPreviewVoice').classList.remove('is-previewing');
+    if(wasSynth&&synth){synth.cancel();synth.resume();}
+    $('previewStatusText').textContent='Проба голоса остановлена';
+  }
+  function cancelReading() {
+    generation++;
+    const wasSynth=!!job?.utterance;clearJob(job);job=null;
+    if(wasSynth&&synth){synth.cancel();synth.resume();}
+    for(const a of decks){a.onended=a.onerror=a.onloadedmetadata=null;a.pause();}
+    overlapping.clear();
+    $('deckSlotA').classList.remove('standby-ready');$('deckSlotB').classList.remove('standby-ready');
+  }
+  function stop() {stopPreview();cancelReading();status('IDLE','ОСТАНОВЛЕНО · ПОЗИЦИЯ СОХРАНЕНА');highlight(false);persist();}
+  function fail(j,message) {
+    if(j!==job||j.dead)return;
+    const code=message.match(/^\[([A-Z0-9-]+)\]/)?.[1];
+    cancelReading();status('ERROR',code?'ОШИБКА · '+code:'');notice(message+' Текущая фраза не пропущена. Нажми «Старт», чтобы повторить.',true);persist();
+  }
+  function finish(j) {
+    if(j!==job||j.dead||j.type==='gap')return;
+    clearTimeout(j.watchdog);clearInterval(j.trimTimer);
+    if(mode==='PAUSED'){j.endedWhilePaused=true;return;}
+    if(!active())return;
+    clearJob(j);job=null;
+    if(index+1>=segments.length){completed=true;status('DONE');highlight(false);persistNow();return;}
+    job={id:generation,type:'gap',dead:false,elapsed:0};
+    status('PLAYING','ПАУЗА МЕЖДУ ПРЕДЛОЖЕНИЯМИ');
+    scheduleGap(job);
+  }
+  function scheduleGap(j) {
+    clearTimeout(j.gapTimer);
+    j.gapStarted=performance.now();
+    j.gapTimer=setTimeout(()=>{
+      if(j!==job||j.dead||!active())return;
+      clearJob(j);job=null;index++;highlight();persist();speak();
+    },Math.max(0,settings.pauseMs-j.elapsed));
+  }
+  function armWatchdog(j,ms) {
+    clearTimeout(j.watchdog);j.remaining=ms;j.startedAt=Date.now();
+    j.watchdog=setTimeout(()=>{
+      if(!j.utterance&&(j.type==='loading'||j.type==='audio')&&(!j.audio||j.audio.currentTime===0))audioFallback(j,'Сетевой источник не ответил вовремя.');
+      else fail(j,'Голос не завершил фразу или источник аудио не ответил.');
+    },ms);
+  }
+  function pause() {
+    if(!active())return;
+    status('PAUSED');
+    for(const audio of overlapping)audio.pause();
+    if(job){
+      if(job.type==='gap'){job.elapsed+=performance.now()-job.gapStarted;clearTimeout(job.gapTimer);}
+      if(job.watchdog){clearTimeout(job.watchdog);job.watchdog=null;job.remaining=Math.max(1000,(job.remaining||30000)-(Date.now()-job.startedAt));}
+      clearInterval(job.trimTimer);
+      if(job.audio)job.audio.pause();
+      if(job.utterance&&synth)synth.pause();
+    }
+    persist();
+  }
+  function resume() {
+    if(!job){start();return;}
+    for(const audio of overlapping)audio.play().catch(()=>notice('Не удалось продолжить предыдущую фразу.',true));
+    const j=job;
+    if(j.type==='gap'){status('PLAYING','ПАУЗА МЕЖДУ ПРЕДЛОЖЕНИЯМИ');scheduleGap(j);return;}
+    if(j.endedWhilePaused){status('PLAYING');finish(j);return;}
+    if(j.type==='loading'){status('LOADING');armWatchdog(j,j.remaining||20000);return;}
+    if(j.type==='ready'){status('PLAYING');playAudio(j,j.source);return;}
+    if(j.type==='fallback'){speakNative(j,segments[index].text);return;}
+    status('PLAYING',sourceLabel);
+    armWatchdog(j,j.remaining||30000);
+    if(j.audio)playReadingAudio(j);
+    else if(j.utterance&&synth){synth.resume();if(!synth.speaking&&!synth.pending)start();}
+  }
+  function togglePlay() {if(active())pause();else {stopPreview();if(mode==='PAUSED')resume();else start();}}
+  function primeNetworkAudio() {
+    // A loaded recording can be started by a real tap; silent priming is not proof of permission.
+    if(!networkSelected()||ios)return;
+    const data=new Uint8Array(1004),view=new DataView(data.buffer);
+    for(const [offset,value] of [[0,'RIFF'],[8,'WAVE'],[12,'fmt '],[36,'data']])for(let i=0;i<value.length;i++)data[offset+i]=value.charCodeAt(i);
+    view.setUint32(4,data.length-8,true);view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);
+    view.setUint32(24,24000,true);view.setUint32(28,48000,true);view.setUint16(32,2,true);view.setUint16(34,16,true);view.setUint32(40,data.length-44,true);
+    const silence='data:audio/wav;base64,'+btoa(String.fromCharCode(...data));
+    // iOS authorizes each media element during the click, before the network await.
+    for(const audio of [...decks,$('previewAudio')]) {
+      if(audio.dataset.tishePrimed)continue;
+      audio.dataset.tishePrimed='1';audio.setAttribute('playsinline','');audio.src=silence;
+      audio.play().then(()=>{if(audio.src===silence){audio.pause();audio.currentTime=0;}}).catch(()=>{delete audio.dataset.tishePrimed;});
+    }
+  }
+  function start() {
+    if(!$('editorDrawer').hidden){saveEditorText(true);return;}
+    stopPreview();
+    if(!segments.length){toggleEditor(true);notice('Вставь текст и нажми «Применить и слушать».');return;}
+    cancelReading();primeNetworkAudio();if(completed){index=0;completed=false;}
+    sourceWarning='';status('PLAYING');setupMediaSession();speak();
+  }
+  function chooseVoice() {
+    if(directSelected())return null;
+    const chosen=voices.find(v=>voiceKey(v)===settings.voice);
+    if(chosen)return chosen;
+    if(settings.voice.startsWith('voice:')||settings.voice.startsWith('native:')||edgeSelected())return null;
+    if(settings.voice==='auto') {
+      const natural=voices.find(v=>nativeEdgeId(v)==='ru-RU-DmitryNeural')||voices.find(v=>nativeEdgeId(v)==='ru-RU-SvetlanaNeural');
+      if(natural)return natural;
+    }
+    const lang=settings.voice==='google_en'?'en':'ru';
+    const match=v=>v.lang.split(/[-_]/)[0].toLowerCase()===lang;
+    return voices.find(v=>match(v)&&v.localService)||voices.find(match)||null;
+  }
+  function nativeEdgeId(v) {
+    if(!v||v.localService||!/^ru(?:[-_]RU)?$/i.test(v.lang||''))return null;
+    const name=(v.name||'')+' '+(v.voiceURI||'');
+    if(!/Microsoft/i.test(name))return null;
+    if(/Дмитрий|Dmitry/i.test(name))return 'ru-RU-DmitryNeural';
+    if(/Светлана|Svetlana/i.test(name))return 'ru-RU-SvetlanaNeural';
+    return null;
+  }
+  const voiceKey = v => nativeEdgeId(v)?'native:'+nativeEdgeId(v):'voice:'+v.voiceURI+'|'+v.lang+'|'+(v.localService?'local':'network');
+  function populateVoices() {
+    const seen=new Set();
+    voices=(synth?synth.getVoices():[]).filter(v=>{
+      if(!allowedLanguage(v.lang)||seen.has(voiceKey(v)))return false;
+      seen.add(voiceKey(v));return true;
+    });
+    // A bridge selection or a localized old voice URI must not hide Edge's own same voice.
+    const oldNative=settings.voice.startsWith('voice:')&&settings.voice.endsWith('|network')?nativeEdgeId({name:settings.voice,lang:'ru-RU',localService:false}):null;
+    const directId=!bridge&&/^(edge:|native:)/.test(settings.voice)?settings.voice.slice(settings.voice.indexOf(':')+1):oldNative;
+    if(directId&&microsoftVoices.some(v=>v.id===directId)&&(mobileEdge||voices.some(v=>nativeEdgeId(v)===directId))) {
+      const browserVoice=voices.some(v=>nativeEdgeId(v)===directId);
+      const keepNative=ios&&(browserVoice||settings.voice.startsWith('native:'));
+      const resolved=(mobileEdge&&!keepNative?'online:':'native:')+directId;
+      if(resolved!==settings.voice){settings.voice=resolved;persist();}
+    }
+    if(settings.voice!=='auto'&&!googleSelected()&&!edgeSelected()&&!settings.voice.startsWith('native:')&&!directSelected()) {
+      const parts=settings.voice.split('|');
+      if(!settings.voice.startsWith('voice:')||!allowedLanguage(parts[parts.length-2]||''))settings.voice='auto';
+    }
+    const select=$('selectVoiceEngine');select.replaceChildren();
+    const native=mobileEdge&&!ios?[]:voices.filter(v=>nativeEdgeId(v));
+    if(native.length) {
+      const group=document.createElement('optgroup');group.label=ios?'Microsoft · предоставлены браузером (Web Speech API)':'Microsoft Edge · напрямую, без моста';
+      for(const id of ['ru-RU-DmitryNeural','ru-RU-SvetlanaNeural']) {
+        const v=native.find(v=>nativeEdgeId(v)===id);
+        if(v)group.append(new Option((id.includes('Dmitry')?'Дмитрий':'Светлана')+' · Microsoft Edge Online · ru-RU',voiceKey(v)));
+      }
+      select.append(group);
+    }
+    const directGroup=document.createElement('optgroup');directGroup.label=ios?'Microsoft · отдельное сетевое подключение (не Read Aloud)':'Microsoft Online · телефон и компьютер · без моста';
+    microsoftVoices.forEach(v=>directGroup.append(new Option(v.name+' · прямое подключение Microsoft','online:'+v.id)));
+    select.append(directGroup);
+    if(bridgeVoices.length) {
+      const group=document.createElement('optgroup');group.label='Microsoft · через голосовой мост';
+      bridgeVoices.forEach(v=>group.append(new Option(v.name+' · '+v.lang,'edge:'+v.id)));
+      select.append(group);
+    }
+    select.add(new Option('Авто · русский голос браузера','auto'));
+    for(const local of [true,false]) {
+      const list=voices.filter(v=>v.localService===local&&!nativeEdgeId(v));if(!list.length)continue;
+      const group=document.createElement('optgroup');group.label=local?'Голоса на устройстве':'Сетевые голоса браузера';
+      list.sort((a,b)=>Number(/^ru/i.test(b.lang))-Number(/^ru/i.test(a.lang))||a.name.localeCompare(b.name,'ru')).forEach(v=>group.append(new Option(v.name+' · '+v.lang,voiceKey(v))));
+      select.append(group);
+    }
+    const cloud=document.createElement('optgroup');cloud.label='Внешний MP3 · текст отправляется Google';
+    cloud.append(new Option('Google MP3 · русский · экспериментальный','google_ru'),new Option('Google MP3 · English · экспериментальный','google_en'));select.append(cloud);
+    if(![...select.options].some(o=>o.value===settings.voice))select.add(new Option('Сохранённый голос недоступен · выбери другой',settings.voice));
+    select.value=settings.voice;
+    $('selectPreviewVoice').replaceChildren(...[...select.children].map(el=>el.cloneNode(true)));
+    $('selectPreviewVoice').value=settings.voice;
+    const edgeStatus=$('edgeVoiceStatus');
+    const russian=bridgeVoices.filter(v=>v.lang.startsWith('ru')).map(v=>v.name);
+    if(edgeStatus)edgeStatus.textContent=!bridge?'Для телефона выбирай Дмитрия или Светлану в группе Microsoft Online. Этот способ не зависит от списка голосов iOS и Android и не требует включённого компьютера. Открывай файл в Microsoft Edge; нужен интернет.':bridgeState==='ready'?'Локальный мост подключён. Microsoft: '+russian.join(', ')+'. Для озвучки нужен интернет.':bridgeState==='loading'?'Подключаю локальный мост…':bridgeError;
+    if(edgeStatus&&ios&&!bridge){
+      const available=voices.filter(v=>/^ru(?:[-_]|$)/i.test(v.lang));
+      edgeStatus.textContent='Браузерный API · '+(!synth?'speechSynthesis отсутствует.':!voices.length?'Список пока пуст. Нажми «Обновить список голосов».':native.length?'Microsoft предоставлен странице: '+native.map(v=>v.name).join(', ')+'. Выбери голос из группы «предоставлены браузером».':'Светлана и Дмитрий не обнаружены среди голосов, предоставленных странице. Встроенное «Читать вслух» Edge использует отдельный список.')+' Русские голоса API: '+(available.map(v=>v.name+' ['+v.voiceURI+'; '+(v.localService?'local':'network')+']').join('; ')||'не обнаружены')+'. Пункты «отдельное сетевое подключение» добавлены читалкой; они не подтверждают доступность голоса в браузерном API.';
+    }
+    if($('browserVoicesRefresh'))$('browserVoicesRefresh').hidden=!ios;
+    $('bridgeOpenLink').hidden=!bridge||!!native.length||bridgeState!=='offline';
+    $('bridgeRetry').hidden=!bridge;
+    updateSourceHint();
+  }
+  async function refreshBridge() {
+    if(!bridge)return;
+    bridgeState='loading';bridgeError='';populateVoices();
+    try {
+      const response=await fetch(bridge.baseUrl+'api/voices',{headers:{'X-Tishe-Session':bridge.token},signal:AbortSignal.timeout(18000),cache:'no-store'});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||'Мост недоступен.');
+      const english=new Set(['en-US-AriaNeural','en-US-GuyNeural','en-GB-SoniaNeural','en-GB-RyanNeural']);
+      bridgeVoices=data.voices.filter(v=>allowedLanguage(v.lang)&&(/^ru-/i.test(v.lang)||english.has(v.id)));
+      if(!bridgeVoices.length)throw new Error('Microsoft не вернул русские и английские голоса.');
+      bridgeVoices.sort((a,b)=>Number(b.lang.startsWith('ru'))-Number(a.lang.startsWith('ru'))||a.name.localeCompare(b.name,'ru'));
+      bridgeState='ready';
+    }catch(error){bridgeVoices=[];bridgeState='offline';bridgeError=error.name==='TimeoutError'?'Microsoft не вернул каталог вовремя. Нажми «Обновить подключение».':error.message;}
+    populateVoices();
+  }
+  function updateSourceHint() {
+    const google=googleSelected(),edge=edgeSelected(),direct=directSelected(),v=chooseVoice(),remote=bridgeVoices.find(v=>'edge:'+v.id===settings.voice);
+    $('rangePitch').disabled=google;
+    $('rangePitch').title=google?'Для MP3 независимое изменение высоты тона недоступно':'Высота тона выбранного голоса';
+    $('lblPitch').textContent=google?'Только системный голос':settings.pitch.toFixed(2);
+    $('rangePauseMs').disabled=false;
+    $('lblPauseMs').textContent=settings.pauseMs+' мс';
+    $('metaEngineBadge').textContent=direct?'MICROSOFT · НАПРЯМУЮ':edge?'MICROSOFT · ГОЛОСОВОЙ МОСТ':google?'GOOGLE · СЕТЕВОЙ MP3':nativeEdgeId(v)?'MICROSOFT EDGE · БЕЗ МОСТА':'ГОЛОС УСТРОЙСТВА';
+    $('sourceHint').textContent=direct?'Microsoft · '+(microsoftVoices.find(v=>v.id===directVoiceId())?.name||'выбранный голос')+' · прямой сетевой синтез, без EXE и компьютера-посредника. Текст передаётся только Microsoft. Нужен Edge и интернет; другой голос при ошибке не включается.':edge?remote?'Microsoft · '+remote.name+' · через локальный мост. Текст для озвучки отправляется Microsoft. Голос при ошибке не подменяется.':bridgeState==='loading'?'Подключаю голосовой мост…':bridgeError||'Для сохранённого голоса моста нет подключения. Выбери прямое подключение Microsoft Online.':google?'Экспериментальный сетевой MP3 · '+(selectedLanguage()==='en'?'English':'русский')+': фразы передаются Google, доступность зависит от сервиса. '+(ios?'На iPhone системный голос вместо Google не включается. Если звук заблокирован, запись сохраняется до повторного нажатия ▶.':'При недоступности — голос устройства того же языка с явным указанием источника.'):v?'Выбран: '+v.name+(nativeEdgeId(v)?' · напрямую через Edge, без EXE и отдельного моста. Нужен интернет; текст передаётся Microsoft.':v.localService?' · локальный, без передачи текста в сеть.':' · сетевой голос браузера, требует интернета.'):'Выбранный браузерный голос не обнаружен. Обнови список в настройках звука. Отдельное сетевое подключение Microsoft не означает доступность голоса через браузерный API.';
+    $('deckSlotA').textContent=google?'ДЕКА A':'РЕЧЬ';$('deckSlotB').textContent=google?'ДЕКА B':'СИНТЕЗ';
+    $('deckSlotA').classList.toggle('active-deck',!google||deck===0);$('deckSlotB').classList.toggle('active-deck',google&&deck===1);
+  }
+  function speakNative(j,text,voice=chooseVoice()) {
+    if(j!==job||j.dead)return;
+    if(!synth||!window.SpeechSynthesisUtterance){fail(j,'В этом браузере нет синтеза речи.');return;}
+    if(!voice){fail(j,'Голос нужного языка не найден. Выбери доступный русский или английский голос либо Google MP3.');return;}
+    j.type='synth';
+    const u=new SpeechSynthesisUtterance(text);j.utterance=u;
+    u.voice=voice;u.lang=voice.lang;u.rate=settings.rate;u.pitch=settings.pitch;u.volume=settings.volume;
+    sourceLabel=voice.name;status(ios?'LOADING':'PLAYING',(ios?'ОЖИДАНИЕ ГОЛОСА · ':'ЧТЕНИЕ · ')+sourceLabel);
+    notice(sourceWarning||'Источник: '+voice.name+(voice.localService?' · локальный голос':' · сетевой голос браузера'));
+    u.onstart=()=>{if(j!==job||j.dead)return;if(mode==='PAUSED')synth.pause();else {status('PLAYING','ЧТЕНИЕ · '+voice.name);if(ios)armWatchdog(j,Math.max(20000,text.length*220/settings.rate+10000));}};
+    u.onend=()=>finish(j);
+    u.onerror=e=>{if(j!==job||j.dead)return;fail(j,'Синтез речи: '+(e.error||'неизвестная ошибка')+'.');};
+    armWatchdog(j,ios?45000:Math.max(20000,text.length*220/settings.rate+10000));
+    synth.resume();synth.speak(u);
+  }
+  async function silenceTail(blob) {
+    const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return 0;
+    const context=new Context();
+    try {
+      const buffer=await context.decodeAudioData(await blob.arrayBuffer());
+      const pcm=buffer.getChannelData(0),step=Math.max(1,Math.round(buffer.sampleRate*0.01));
+      let samples=0;
+      for(let end=pcm.length;end>0;end-=step){
+        const start=Math.max(0,end-step);let sum=0;
+        for(let i=start;i<end;i++)sum+=pcm[i]*pcm[i];
+        if(Math.sqrt(sum/(end-start))>0.002)break;
+        samples+=end-start;if(samples>buffer.sampleRate*0.5)break;
+      }
+      return Math.max(0,samples/buffer.sampleRate-0.06);
+    }catch(_){return 0;}finally{await context.close().catch(()=>{});}
+  }
+  async function getCloud(text,lang=selectedLanguage()) {
+    const key=lang+'|'+text;
+    if(cache.has(key))return cache.get(key);
+    if(inflight.has(key))return inflight.get(key);
+    const promise=(async()=>{
+      const direct='https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl='+encodeURIComponent(lang)+'&q='+encodeURIComponent(text);
+      const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),4000);
+      let source={url:direct,tail:0,blob:false};
+      try {
+        const r=await fetch(direct,{signal:controller.signal,referrerPolicy:'no-referrer'});
+        if(!r.ok)throw new Error('HTTP '+r.status);
+        const blob=await r.blob();if(blob.size<100||!blob.type.startsWith('audio/'))throw new Error('Нет аудио');
+        source={url:URL.createObjectURL(blob),tail:await silenceTail(blob),blob:true};
+      }catch(error){source.fetchError=error.name==='AbortError'?'Google не ответил на загрузку MP3 за 4 секунды.':'Загрузка MP3 Google через fetch: '+(/^HTTP \d+$|^Нет аудио$/.test(error.message)?error.message:error.name)+'.';}
+      finally{clearTimeout(timer);}
+      cache.set(key,source);
+      // Keep current deck URLs alive even when an old cache entry is evicted.
+      if(cache.size>24){const [key,old]=cache.entries().next().value;cache.delete(key);if(old.blob&&!decks.some(a=>a.src===old.url)&&$('previewAudio').src!==old.url)URL.revokeObjectURL(old.url);}
+      return source;
+    })();
+    inflight.set(key,promise);
+    try{return await promise;}finally{inflight.delete(key);}
+  }
+  async function getEdgeAudio(text) {
+    if(!bridge)throw new Error('Запусти «Голосовой мост.exe» и открой читалку через мост.');
+    if(!bridgeVoices.some(v=>'edge:'+v.id===settings.voice))throw new Error(bridgeError||'Голос ещё не подключён. Обнови подключение в настройках звука.');
+    const voice=settings.voice.slice(5),rate=settings.rate,pitch=settings.pitch;
+    const key=['edge',voice,rate,pitch,text].join('|');
+    if(cache.has(key))return cache.get(key);
+    if(inflight.has(key))return inflight.get(key);
+    const promise=(async()=>{
+      const response=await fetch(bridge.baseUrl+'api/tts',{method:'POST',headers:{'Content-Type':'application/json','X-Tishe-Session':bridge.token},body:JSON.stringify({voice,text,rate,pitch}),signal:AbortSignal.timeout(95000)});
+      if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error||'Microsoft не завершил синтез.');}
+      if(response.headers.get('X-Tishe-Complete')!=='1'||response.headers.get('X-Tishe-Voice')!==voice)throw new Error('Мост не подтвердил выбранный голос и завершение синтеза.');
+      const audio=await response.blob();
+      if(!audio.type.startsWith('audio/')||audio.size<1000)throw new Error('Мост не вернул аудио.');
+      const source={url:URL.createObjectURL(audio),blob:true,tail:0,engine:'edge',playbackRate:1,label:'Microsoft · '+bridgeVoices.find(v=>v.id===voice)?.name};
+      cache.set(key,source);
+      if(cache.size>24){const [oldKey,old]=cache.entries().next().value;cache.delete(oldKey);if(old.blob&&!decks.some(a=>a.src===old.url)&&$('previewAudio').src!==old.url)URL.revokeObjectURL(old.url);}
+      return source;
+    })();
+    inflight.set(key,promise);
+    try{return await promise;}finally{inflight.delete(key);}
+  }
+  async function getDirectAudio(text) {
+    const voice=directVoiceId(),rate=settings.rate,pitch=settings.pitch;
+    const key=['direct-ms',voice,rate,pitch,text].join('|');
+    if(cache.has(key))return cache.get(key);
+    if(inflight.has(key))return inflight.get(key);
+    const promise=(async()=>{
+      const audio=await directMicrosoft.synthesize(voice,text,rate,pitch);
+      const source={url:URL.createObjectURL(audio.blob),blob:true,tail:0,engine:'microsoft-direct',playbackRate:1,label:'Microsoft · '+microsoftVoices.find(v=>v.id===voice)?.name};
+      cache.set(key,source);
+      if(cache.size>24){const [oldKey,old]=cache.entries().next().value;cache.delete(oldKey);if(old.blob&&!decks.some(a=>a.src===old.url)&&$('previewAudio').src!==old.url)URL.revokeObjectURL(old.url);}
+      return source;
+    })();
+    inflight.set(key,promise);
+    try{return await promise;}finally{inflight.delete(key);}
+  }
+  const getNetworkAudio = text => directSelected()?getDirectAudio(text):edgeSelected()?getEdgeAudio(text):getCloud(text);
+  function startTrimTimer(j) {
+    clearInterval(j.trimTimer);
+    const tail=Math.min(settings.trim/1000,j.source?.tail||0);
+    j.trimTimer=setInterval(()=>{
+      const a=j.audio;
+      if(j!==job||!active()||!a||a.paused||!Number.isFinite(a.duration))return;
+      const remaining=(a.duration-a.currentTime)/(a.playbackRate||1);
+      if(settings.pauseMs<0&&j.nextReady&&index+1<segments.length&&remaining<=-settings.pauseMs/1000&&!overlapping.has(decks[1-deck])){
+        overlapping.add(a);a.onended=a.onerror=()=>overlapping.delete(a);
+        j.audio=null;clearJob(j);job=null;index++;highlight();persist();speak();
+      }else if(tail>0&&a.duration>1&&a.currentTime>=a.duration-tail)finish(j);
+    },25);
+  }
+  function audioFallback(j,message) {
+    if(j!==job||j.dead||j.fallback)return;
+    if(directSelected()||edgeSelected()||['edge','microsoft-direct'].includes(j.source?.engine)){fail(j,message+' Голос Microsoft не заменён другим.');return;}
+    if(ios&&googleSelected()){fail(j,message+' Google не заменён системным голосом.');return;}
+    j.fallback=true;clearTimeout(j.watchdog);clearInterval(j.trimTimer);
+    if(j.audio){j.audio.onended=j.audio.onerror=j.audio.onloadedmetadata=null;j.audio.pause();j.audio=null;}
+    cloudDeadUntil=Date.now()+60000;
+    sourceWarning=message+' Продолжаю голосом: '+(chooseVoice()?.name||'голос нужного языка недоступен');
+    if(mode==='PAUSED'){j.type='fallback';return;}
+    speakNative(j,segments[index].text);
+  }
+  function playAudio(j,source) {
+    if(j!==job||j.dead)return;
+    j.source=source;j.type='audio';deck=1-deck;
+    const a=decks[deck];j.audio=a;
+    a.onended=a.onerror=a.onloadedmetadata=null;a.pause();
+    if(a.src!==source.url){a.src=source.url;a.load();}else{try{a.currentTime=0;}catch(_){}}
+    a.volume=settings.volume;a.playbackRate=source.playbackRate??settings.rate;a.preservesPitch=true;
+    updateSourceHint();sourceLabel=source.label||'Google MP3';
+    status('LOADING','ЗАГРУЗКА · '+sourceLabel);
+    notice(['edge','microsoft-direct'].includes(source.engine)?sourceLabel+' · полная запись фразы, без подмены голоса.':source.tail?'Google MP3 · удаляется только измеренная тишина в конце фразы.':'Google MP3 · окончания слов сохраняются.');
+    a.onended=()=>finish(j);a.onerror=()=>audioFallback(j,mediaErrorMessage(a,source));
+    playReadingAudio(j);
+  }
+  function mediaErrorMessage(audio,source,error) {
+    const code=audio.error?.code;
+    const reason=({1:'Загрузка записи прервана.',2:'Браузер не загрузил MP3 из сети.',3:'Браузер не смог декодировать полученный MP3.',4:'Браузер не принял источник или формат MP3.'})[code]||'Не удалось воспроизвести MP3.';
+    return '[AUDIO-'+(code||error?.name||'UNKNOWN')+'] '+reason+(source?.fetchError?' '+source.fetchError:'');
+  }
+  function playReadingAudio(j) {
+    const a=j.audio;
+    const wasWaiting=j.needsTap;
+    j.needsTap=false;
+    armWatchdog(j,8000);
+    // Keep play() directly in this call stack: resume() is entered from the user's tap.
+    a.play().then(()=>{
+      if(j!==job||j.dead||mode==='PAUSED'){a.pause();return;}
+      if(j.fallback){a.pause();return;}
+      armWatchdog(j,Math.max(20000,segments[index].text.length*220/settings.rate+12000));
+      if(wasWaiting)notice('Источник: '+(j.source.label||'Google MP3')+' · выбранный голос сохранён.');
+      status('PLAYING','ЧТЕНИЕ · '+sourceLabel);startTrimTimer(j);
+      const next=segments[index+1];
+      if(next)getNetworkAudio(next.text).then(s=>{
+        if(j!==job||j.dead||!active())return;
+        j.nextReady=true;
+        const standby=decks[1-deck];if(!overlapping.has(standby)){standby.src=s.url;standby.load();}
+        $('deckSlot'+(deck?'A':'B')).classList.add('standby-ready');
+      }).catch(()=>{});
+    }).catch(e=>{
+      if(j!==job||j.dead||mode==='PAUSED')return;
+      if(e.name==='NotAllowedError'){
+        pause();j.needsTap=true;status('PAUSED','ЗАПИСЬ ГОТОВА · НАЖМИ ▶');
+        notice('[AUDIO-TAP] Браузер требует прямого нажатия для '+(j.source.label||'Google MP3')+'. Нажми ▶ ещё раз: источник сохранён, повторный запрос синтеза и смена голоса не нужны.',false,true);
+      }else audioFallback(j,mediaErrorMessage(a,j.source,e));
+    });
+  }
+  function speak() {
+    if(!active()||!segments[index])return;
+    const j={id:generation,type:'loading',dead:false};job=j;
+    highlight();persist();
+    if(googleSelected()&&segments[index].text.length>MAX_CHUNK) {
+      if(ios){fail(j,'[GOOGLE-LENGTH] Предложение длиннее ограничения этого режима Google MP3 (180 символов). Для этого предложения выбери Дмитрия или Светлану; системный голос не включён.');return;}
+      sourceWarning='Длинное предложение читается целиком голосом устройства: '+(chooseVoice()?.name||'голос нужного языка недоступен')+'. Сетевой MP3 ограничивает длину текста.';
+      speakNative(j,segments[index].text);return;
+    }
+    if(!directSelected()&&!edgeSelected()&&(!googleSelected()||cloudDeadUntil>Date.now())) {speakNative(j,segments[index].text);return;}
+    status('LOADING');armWatchdog(j,directSelected()||edgeSelected()?98000:8000);
+    getNetworkAudio(segments[index].text).then(source=>{
+      if(j!==job||j.dead||j.id!==generation||j.fallback)return;
+      if(mode==='PAUSED'){j.source=source;j.type='ready';return;}
+      if(active())playAudio(j,source);
+    }).catch(error=>audioFallback(j,directSelected()||edgeSelected()?error.message:'Не удалось загрузить голос.'));
+  }
+  function seek(value,autoStart=false) {
+    if(!segments.length)return;
+    const was=active(),paused=mode==='PAUSED';cancelReading();stopPreview();
+    index=Math.trunc(clamp(value,0,segments.length-1,0));completed=false;
+    status(paused?'PAUSED':'IDLE');highlight(false);persist();
+    if(was||autoStart)start();
+  }
+  function previous(){if(index>0)seek(index-1);}
+  function next(){if(index+1<segments.length)seek(index+1);}
+  function restartSettings() {
+    const was=active(),paused=mode==='PAUSED';stopPreview();cancelReading();
+    status(paused?'PAUSED':'IDLE');persist();if(was)start();
+  }
+  function setRate(v){settings.rate=clamp(v,0.8,1.5,0.95);$('selectRate').value=settings.rate.toFixed(2);restartSettings();}
+  function setPitch(v){settings.pitch=clamp(v,0.7,1.3,1);$('rangePitch').value=settings.pitch;fill($('rangePitch'));updateSourceHint();restartSettings();}
+  function setVolume(v){settings.volume=clamp(v,0,1,1);$('rangeVolume').value=settings.volume;$('lblVolume').textContent=Math.round(settings.volume*100)+'%';fill($('rangeVolume'));for(const a of [...decks,$('previewAudio')])a.volume=settings.volume;if(job?.utterance||preview?.utterance)restartSettings();else persist();}
+  function setPauseMs(v){
+    settings.pauseMs=clamp(v,-2000,2000,400);
+    $('rangePauseMs').value=settings.pauseMs;fill($('rangePauseMs'));$('lblPauseMs').textContent=settings.pauseMs+' мс';
+    if(job?.type==='gap'&&active()){job.elapsed+=performance.now()-job.gapStarted;scheduleGap(job);}
+    persist();
+  }
+  function setFontSize(v){settings.fontSize=clamp(v,16,28,21);document.documentElement.style.setProperty('--reader-font-size',settings.fontSize+'px');$('rangeFontSize').value=settings.fontSize;$('lblFontSize').textContent=settings.fontSize+'px';fill($('rangeFontSize'));persist();}
+  function setAutoScroll(v){settings.autoScroll=!!v;$('chkAutoScroll').checked=settings.autoScroll;persist();}
+  function theme(){const name=['dark','light','oled'][settings.theme];document.documentElement.dataset.theme=name;$('lblCycleTheme').textContent='Свет: '+({dark:'Тёмная',light:'Светлая',oled:'OLED'}[name]);}
+  function cycleTheme(){settings.theme=(settings.theme+1)%3;theme();persist();}
+
+  function editorStats() {
+    const text=$('editorTextarea').value;
+    $('editorLiveStats').textContent=(text.trim()?text.trim().split(/\s+/u).length:0)+' слов · '+splitText(text).length+' фраз';
+  }
+  function syncDraft() {
+    clearTimeout(draftTimer);
+    draft={title:$('editDocTitle').value.slice(0,200),text:$('editorTextarea').value.slice(0,LIMIT)};
+    persistNow();
+  }
+  function draftChanged() {clearTimeout(draftTimer);draftTimer=setTimeout(()=>{syncDraft();editorStats();},350);}
+  function setDialog(id,open) {
+    const el=$(id);
+    if(!open){if(id==='editorDrawer'&&!el.hidden)syncDraft();el.hidden=true;}
+    else {
+      savedFocus=document.activeElement;
+      if(id==='editorDrawer'){setDialog('studioDrawer',false);$('editorTextarea').value=draft.text;$('editDocTitle').value=draft.title;editorStats();}
+      else setDialog('editorDrawer',false);
+      el.hidden=false;
+    }
+    $('btnToggleEditor').classList.toggle('active',!$('editorDrawer').hidden);
+    $('btnToggleStudio').classList.toggle('active',!$('studioDrawer').hidden);
+    const modal=!$('editorDrawer').hidden||!$('studioDrawer').hidden||!$('oledOverlay').hidden;
+    for(const target of ['topHeaderBar','mainStage','bottomDockWrapper'])$(target).inert=modal||(target==='topHeaderBar'&&document.body.classList.contains('focus-mode'));
+    document.body.style.overflow=modal?'hidden':'';
+    if(open)queueMicrotask(()=>{if(!el.hidden)(id==='editorDrawer'?$('editorTextarea'):el.querySelector('button')).focus();});
+    else if(!modal&&savedFocus?.isConnected)savedFocus.focus({preventScroll:true});
+  }
+  function toggleEditor(force){setDialog('editorDrawer',typeof force==='boolean'?force:$('editorDrawer').hidden);}
+  function toggleStudio(force){setDialog('studioDrawer',typeof force==='boolean'?force:$('studioDrawer').hidden);}
+  function saveEditorText(play) {
+    syncDraft();stop();
+    doc={text:draft.text.trim(),title:draft.title.trim()||'Рукопись'};
+    draft={...doc};index=0;completed=false;render();persistNow();toggleEditor(false);
+    notice(storageFailed?'Текст применён, но не сохранён браузером. Скачай копию.':'Рукопись применена.');
+    if(play&&segments.length)start();
+  }
+  function confirmButton(id,label,action) {
+    const button=$(id),text=button.querySelector('span:last-child');
+    if(armed.has(id)){clearTimeout(armed.get(id).timer);text.textContent=armed.get(id).label;button.classList.remove('is-armed-danger');armed.delete(id);action();return;}
+    const original=text.textContent;text.textContent=label;button.classList.add('is-armed-danger');
+    const timer=setTimeout(()=>{text.textContent=original;button.classList.remove('is-armed-danger');armed.delete(id);},3000);
+    armed.set(id,{timer,label:original});
+  }
+  function clearAllText(){confirmButton('btnClearTop','Подтвердить сброс?',()=>{
+    importVersion++;clearTimeout(draftTimer);stop();doc={title:'Рукопись не загружена',text:''};draft={title:'',text:''};index=0;completed=false;
+    $('editorTextarea').value='';$('editDocTitle').value='';toggleEditor(false);render();persistNow();notice('Рукопись и черновик очищены.');
+  });}
+  function clearEditorArea(){confirmButton('btnClearEditor','Очистить черновик?',()=>{$('editorTextarea').value='';$('editDocTitle').value='';syncDraft();editorStats();$('editorTextarea').focus();});}
+  async function pasteIntoEditorArea() {
+    try {if(!navigator.clipboard?.readText)throw new Error();const text=await navigator.clipboard.readText();if(text.length>LIMIT)throw new Error('large');$('editorTextarea').value=text;syncDraft();editorStats();}
+    catch(e){notice(e.message==='large'?'Текст слишком большой (лимит — 1 млн символов).':'Браузер не дал доступ к буферу. Вставь текст в поле сочетанием Ctrl+V.',true);}
+    $('editorTextarea').focus();
+  }
+  async function pasteFromClipboardAndRead() {
+    toggleEditor(true);await pasteIntoEditorArea();
+    // Applying is a deliberate click: denied clipboard access must not start an old draft.
+  }
+  function htmlText(content) {
+    const template=document.createElement('template');template.innerHTML=content;
+    template.content.querySelectorAll('script,style,noscript,template,iframe,object,svg,head').forEach(n=>n.remove());
+    template.content.querySelectorAll('br').forEach(n=>n.replaceWith('\n'));
+    template.content.querySelectorAll('p,div,section,article,li,h1,h2,h3,h4,h5,h6,blockquote,tr').forEach(n=>n.append('\n\n'));
+    return template.content.textContent.replace(/[\t ]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+  }
+  async function processFile(file) {
+    if(!file)return;
+    const version=++importVersion;
+    if(!/\.(txt|md|html?|markdown)$/i.test(file.name)){notice('Поддерживаются только TXT, MD, HTML и HTM.',true);return;}
+    if(file.size>5*1024*1024){notice('Файл больше 5 МБ. Импорт отменён; текущий текст сохранён.',true);return;}
+    try {
+      const bytes=await file.arrayBuffer();if(version!==importVersion)return;
+      let content;
+      try {content=new TextDecoder('utf-8',{fatal:true}).decode(bytes);}
+      catch(_){content=new TextDecoder('windows-1251').decode(bytes);}
+      if(/\.html?$/i.test(file.name))content=htmlText(content);
+      content=content.replace(/^\uFEFF/,'').trim();
+      if(content.length>LIMIT)throw new Error('В тексте больше 1 млн символов.');
+      if(!content)throw new Error('В файле не найден текст.');
+      // Import into the draft first; the current reading position remains intact until Apply.
+      toggleEditor(true);clearTimeout(draftTimer);
+      $('editorTextarea').value=content;$('editDocTitle').value=file.name.replace(/\.[^.]+$/,'').slice(0,200);
+      syncDraft();editorStats();notice('Файл загружен в редактор. Нажми «Применить текст» или «Применить и слушать».');
+    }catch(e){notice('Импорт не выполнен: '+e.message,true);}
+  }
+  function importTextFile(e){const f=e.target.files?.[0];e.target.value='';processFile(f);}
+  function exportText() {
+    const editing=!$('editorDrawer').hidden;if(editing)syncDraft();
+    const d=editing?draft:doc;
+    const blob=new Blob([d.title+'\n\n'+d.text],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=(d.title||'Рукопись').replace(/[<>:"/\\|?*]/g,'_').slice(0,100)+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  function toggleFocus(){toggleEditor(false);toggleStudio(false);document.body.classList.toggle('focus-mode');const on=document.body.classList.contains('focus-mode');$('btnToggleFocus').classList.toggle('active',on);$('topHeaderBar').inert=on;layout();}
+  function toggleOled(show) {
+    clearTimeout(holdTimer);$('btnHoldUnlock').classList.remove('is-holding');$('lblHoldUnlockText').textContent='Удерживай 1 сек для разблокировки';
+    if(show){toggleEditor(false);toggleStudio(false);savedFocus=document.activeElement;}
+    $('oledOverlay').hidden=!show;
+    for(const id of ['topHeaderBar','mainStage','bottomDockWrapper'])$(id).inert=show||(id==='topHeaderBar'&&document.body.classList.contains('focus-mode'));
+    document.body.style.overflow=show?'hidden':'';
+    if(show)$('oledPlayBtn').focus();else if(savedFocus?.isConnected)savedFocus.focus({preventScroll:true});
+  }
+  function setSleepTimer(minutes) {
+    clearInterval(sleepInterval);sleepDeadline=minutes>0?Date.now()+minutes*60000:0;
+    document.querySelectorAll('.sleep-pill').forEach(b=>b.classList.toggle('active',Number(b.dataset.sleep)===minutes));
+    const tick=()=>{
+      if(!sleepDeadline){$('lblSleepTimer').textContent='Выкл';return;}
+      const seconds=Math.max(0,Math.ceil((sleepDeadline-Date.now())/1000));
+      $('lblSleepTimer').textContent=Math.floor(seconds/60).toString().padStart(2,'0')+':'+(seconds%60).toString().padStart(2,'0');
+      if(!seconds){clearInterval(sleepInterval);sleepDeadline=0;pause();stopPreview();$('lblSleepTimer').textContent='Таймер завершён';notice('Таймер сна завершён. Чтение приостановлено.');}
+    };
+    tick();if(sleepDeadline)sleepInterval=setInterval(tick,1000);
+  }
+  async function previewSelectedVoice() {
+    if(preview?.needsTap&&preview.retry){preview.retry();return;}
+    pause();stopPreview();primeNetworkAudio();
+    const p={dead:false};preview=p;$('btnPreviewVoice').classList.add('is-previewing');
+    const text=selectedLanguage()==='en'?'Voice preview. Adjust the volume and reading speed for comfortable listening.':'Проверка голоса. Настрой громкость и темп так, чтобы слушать было удобно.';
+    const end=(message,error=false)=>{if(preview!==p||p.dead)return;clearJob(p);preview=null;$('btnPreviewVoice').classList.remove('is-previewing');$('previewStatusText').textContent=message;if(error)notice(message,true);};
+    const native=()=>{
+      if(p.nativeStarted||preview!==p||p.dead)return;
+      p.nativeStarted=true;clearTimeout(p.watchdog);
+      if(p.audio){p.audio.onended=p.audio.onerror=null;p.audio.pause();p.audio=null;}
+      const v=chooseVoice();if(!synth||!v){end('Нет доступного голоса нужного языка. Выбери голос в плеере.');return;}
+      const u=new SpeechSynthesisUtterance(text);p.utterance=u;u.voice=v;u.lang=v.lang;u.rate=settings.rate;u.pitch=settings.pitch;u.volume=settings.volume;
+      u.onend=()=>end('Проба завершена · '+v.name);u.onerror=e=>end('Ошибка пробы: '+e.error);
+      $('previewStatusText').textContent='Проба · '+v.name;
+      p.watchdog=setTimeout(()=>{if(preview===p){stopPreview();$('previewStatusText').textContent='Голос не ответил. Выбери другой источник.';}},30000);
+      // The reader's paused synth job cannot coexist with the preview synth queue.
+      if(job?.utterance){cancelReading();status('PAUSED');}
+      synth.resume();synth.speak(u);
+    };
+    const playNetworkPreview=source=>{
+      const a=$('previewAudio');p.audio=a;p.source=source;
+      a.src=source.url;a.playbackRate=source.playbackRate??settings.rate;a.volume=settings.volume;a.preservesPitch=true;
+      const label=source.label||'Google MP3';
+      const failed=error=>{
+        if(preview!==p||p.dead)return;
+        if(ios||!googleSelected())end(mediaErrorMessage(a,source,error)+' Голос не заменён.',true);
+        else native();
+      };
+      a.onended=()=>end('Проба завершена · '+label);a.onerror=()=>failed();
+      p.retry=()=>{
+        if(preview!==p||p.dead)return;
+        p.needsTap=false;clearTimeout(p.watchdog);$('btnPreviewVoice').classList.add('is-previewing');
+        p.watchdog=setTimeout(()=>{if(preview===p)end('[AUDIO-TIMEOUT] Браузер не запустил пробу вовремя. Голос не заменён.',true);},15000);
+        a.play().then(()=>{
+          if(preview!==p||p.dead){a.pause();return;}
+          clearTimeout(p.watchdog);p.watchdog=setTimeout(()=>end('[AUDIO-TIMEOUT] Проба не завершилась вовремя.',true),45000);
+          notice('Проба · '+label+' · выбранный голос сохранён.');
+          $('previewStatusText').textContent='Проба · '+label;
+        }).catch(error=>{
+          if(preview!==p||p.dead)return;
+          if(error.name==='NotAllowedError'){
+            clearTimeout(p.watchdog);p.needsTap=true;$('btnPreviewVoice').classList.remove('is-previewing');
+            $('previewStatusText').textContent='[AUDIO-TAP] Браузер требует прямого нажатия для '+label+'. Нажми «Прослушать пробу голоса» ещё раз: источник сохранён, голос не изменится.';
+          }else failed(error);
+        });
+      };
+      p.retry();
+    };
+    if(directSelected()||edgeSelected()) {
+      $('previewStatusText').textContent='Microsoft · синтез пробы…';
+      try {
+        const source=await getNetworkAudio(text);if(preview!==p||p.dead)return;
+        playNetworkPreview(source);
+      }catch(error){end(error.message+' Голос не заменён.',true);}
+      return;
+    }
+    if(!googleSelected()){native();return;}
+    $('previewStatusText').textContent='Загрузка сетевой пробы…';
+    try {
+      const source=await getCloud(text);if(preview!==p||p.dead)return;
+      playNetworkPreview(source);
+    }catch(error){if(preview===p&&!p.dead){if(ios)end('[GOOGLE-LOAD] '+error.message+' Голос не заменён.',true);else native();}}
+  }
+  function setupMediaSession() {
+    if(!navigator.mediaSession)return;
+    try {navigator.mediaSession.metadata=new MediaMetadata({title:doc.title,artist:'Тише'});}catch(_){}
+    const handlers={play:()=>{if(!active())mode==='PAUSED'?resume():start();},pause,stop,previoustrack:previous,nexttrack:next};
+    for(const [action,handler] of Object.entries(handlers))try{navigator.mediaSession.setActionHandler(action,handler);}catch(_){}
+  }
+
+  window.AuraApp={togglePlay,stop,prev:previous,next,seekToIndex:v=>seek(v),toggleEditor,toggleStudio,saveEditorText,clearAllText,clearEditorArea,pasteFromClipboardAndRead,pasteIntoEditorArea,importTextFile,exportText,toggleFocus,cycleTheme,toggleOled,setRate,setPitch,setVolume,setPauseMs,setFontSize,setAutoScroll,setSleepTimer,previewSelectedVoice,stopPreview,refreshBridge,onVoiceChange(v){settings.voice=v;cloudDeadUntil=0;sourceWarning='';populateVoices();restartSettings();}};
+  window.AuraApp.refreshBrowserVoices=populateVoices;
+
+  for(const id of ['editorTextarea','editDocTitle'])$(id).addEventListener('input',draftChanged);
+  $('editorTextarea').maxLength=LIMIT;$('editDocTitle').maxLength=200;
+  window.addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();$('bookSheet').classList.add('drag-over');$('editorDropZone').classList.add('drag-over');}});
+  window.addEventListener('dragleave',e=>{if(!e.relatedTarget){$('bookSheet').classList.remove('drag-over');$('editorDropZone').classList.remove('drag-over');}});
+  window.addEventListener('drop',e=>{if(!e.dataTransfer.files.length)return;e.preventDefault();$('bookSheet').classList.remove('drag-over');$('editorDropZone').classList.remove('drag-over');if(e.dataTransfer.files.length>1)notice('Импортируется первый файл.');processFile(e.dataTransfer.files[0]);});
+  const cancelHold=()=>{clearTimeout(holdTimer);holdTimer=null;$('btnHoldUnlock').classList.remove('is-holding');$('lblHoldUnlockText').textContent='Удерживай 1 сек для разблокировки';};
+  function beginHold(e){if(e.type==='pointerdown'&&e.button!==0)return;if(holdTimer)return;e.preventDefault();$('btnHoldUnlock').classList.add('is-holding');holdTimer=setTimeout(()=>{cancelHold();toggleOled(false);},900);}
+  $('btnHoldUnlock').addEventListener('pointerdown',beginHold);
+  for(const event of ['pointerup','pointerleave','pointercancel','blur'])$('btnHoldUnlock').addEventListener(event,cancelHold);
+  $('btnHoldUnlock').addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&!e.repeat)beginHold(e);});
+  $('btnHoldUnlock').addEventListener('keyup',cancelHold);
+  window.addEventListener('blur',cancelHold);
+  window.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){e.preventDefault();if(!$('oledOverlay').hidden)toggleOled(false);else if(!$('editorDrawer').hidden)toggleEditor(false);else if(!$('studioDrawer').hidden)toggleStudio(false);else if(document.body.classList.contains('focus-mode'))toggleFocus();return;}
+    const modal=!$('oledOverlay').hidden?$('oledOverlay'):!$('editorDrawer').hidden?$('editorDrawer'):!$('studioDrawer').hidden?$('studioDrawer'):null;
+    if(e.key==='Tab'&&modal){const items=[...modal.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type=hidden]),textarea,select:not([disabled]),[tabindex="0"]')].filter(el=>el.getClientRects().length);const first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}return;}
+    if(modal||e.altKey||e.ctrlKey||e.metaKey||e.repeat||e.target.closest('button,input,textarea,select,[contenteditable="true"],[role="button"]'))return;
+    if(e.code==='Space'){e.preventDefault();togglePlay();}else if(e.key==='ArrowLeft'){e.preventDefault();previous();}else if(e.key==='ArrowRight'){e.preventDefault();next();}
+  });
+  document.addEventListener('visibilitychange',()=>{cancelHold();wakeLock();});
+  window.addEventListener('resize',layout);
+  if(window.ResizeObserver){const observer=new ResizeObserver(layout);observer.observe($('topHeaderBar'));observer.observe($('bottomDockWrapper'));}
+  if(synth)synth.addEventListener('voiceschanged',populateVoices);
+  window.addEventListener('pagehide',()=>{if(!$('editorDrawer').hidden)syncDraft();else persistNow();stopPreview();cancelReading();status('IDLE');for(const source of cache.values())if(source.blob)URL.revokeObjectURL(source.url);cache.clear();});
+  restore();
+  $('selectRate').value=settings.rate.toFixed(2);
+  if(!$('selectRate').value){$('selectRate').add(new Option(settings.rate.toFixed(2)+'x',settings.rate.toFixed(2)));$('selectRate').value=settings.rate.toFixed(2);}
+  for(const [id,value] of [['rangePitch',settings.pitch],['rangeVolume',settings.volume],['rangePauseMs',settings.pauseMs],['rangeFontSize',settings.fontSize]]){$(id).value=value;fill($(id));}
+  $('lblVolume').textContent=Math.round(settings.volume*100)+'%';$('lblFontSize').textContent=settings.fontSize+'px';$('chkAutoScroll').checked=settings.autoScroll;
+  document.documentElement.style.setProperty('--reader-font-size',settings.fontSize+'px');
+  theme();populateVoices();render();status('IDLE');
+  refreshBridge();
+  setTimeout(populateVoices,200);setTimeout(populateVoices,1000);
+})();
+</script>
+</body>
+</html>

@@ -2152,6 +2152,18 @@ button, select, input, textarea { font-family: var(--font-sans); }
           </div>
 
           <div class="studio-control-row">
+            <label class="studio-label-line" for="rangeBlockSize">
+              <span>Размер блока загрузки</span>
+              <span class="studio-val-readout" id="lblBlockSize">1 предложение</span>
+            </label>
+            <input type="range" class="range-slider" id="rangeBlockSize"
+              min="1" max="20" step="1" value="1" style="--val-pct: 0%;"
+              aria-describedby="blockSizeHelp" oninput="window.AuraApp.setBlockSize(this.value)" />
+            <p id="blockSizeHelp" class="pause-help">Больше предложений — больше запас загруженного аудио.</p>
+            <p class="pause-help">Автоподключение включено: при временном сбое — до 8 повторов с растущей задержкой, без смены голоса. При отсутствии сети — ожидание и автоматическая проверка подключения. «Пауза» и «Стоп» отменяют автоматическое продолжение.</p>
+          </div>
+
+          <div class="studio-control-row">
             <label class="studio-label-line" for="selectPreviewVoice">Голос для предпрослушивания и чтения</label>
             <div class="select-shell studio-voice-select">
               <select id="selectPreviewVoice" class="hardware-select" onchange="window.AuraApp.onVoiceChange(this.value)">
@@ -2526,13 +2538,16 @@ button, select, input, textarea { font-family: var(--font-sans); }
   const KEY = 'aura_reader_state_v4';
   const LIMIT = 1000000;
   const MAX_CHUNK = 180;
+  const MAX_BLOCK_SENTENCES = 20;
+  const RETRY_DELAYS = [2000,4000,8000,16000,30000,60000,60000,60000];
   const decks = [$('neuralAudioA'), $('neuralAudioB')];
   const overlapping = new Set();
   const cache = new Map();
   const inflight = new Map();
   let doc = {title:'Рукопись не загружена',text:''};
   let draft = {title:'',text:''};
-  let settings = {voice:bridge?'edge:ru-RU-DmitryNeural':'auto',rate:0.95,pitch:1,volume:1,trim:140,pauseMs:400,fontSize:21,autoScroll:true,theme:0};
+  let settings = {voice:bridge?'edge:ru-RU-DmitryNeural':'auto',rate:0.95,pitch:1,volume:1,trim:140,pauseMs:400,blockSize:1,fontSize:21,autoScroll:true,theme:0};
+  let readingBlock=null, nextBlock=null;
   let segments = [], voices = [], index = 0, completed = false;
   let mode = 'IDLE', generation = 0, job = null, preview = null, deck = 0;
   let saveTimer, draftTimer, sleepInterval, sleepDeadline = 0, wake = null;
@@ -2541,7 +2556,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
   const armed = new Map();
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const clamp = (v,min,max,fallback) => Number.isFinite(Number(v)) ? Math.max(min,Math.min(max,Number(v))) : fallback;
-  const active = () => mode === 'PLAYING' || mode === 'LOADING';
+  const active = () => mode === 'PLAYING' || mode === 'LOADING' || mode === 'RECONNECTING';
   const allowedLanguage = lang => /^(?:ru|en)(?:[-_]|$)/i.test(lang);
   const googleSelected = () => /^google_(?:ru|en)$/.test(settings.voice);
   const edgeSelected = () => settings.voice.startsWith('edge:');
@@ -2590,7 +2605,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
       if(typeof saved.doc?.text==='string')doc={text:saved.doc.text.slice(0,LIMIT),title:String(saved.doc.title||'Рукопись').slice(0,200)};
       draft=typeof saved.draft?.text==='string'?{text:saved.draft.text.slice(0,LIMIT),title:String(saved.draft.title||'').slice(0,200)}:{...doc};
       const s=saved.settings||{};
-      settings={voice:typeof s.voice==='string'?s.voice:'auto',rate:clamp(s.rate,0.8,1.5,0.95),pitch:clamp(s.pitch,0.7,1.3,1),volume:clamp(s.volume,0,1,1),trim:clamp(s.trim,0,280,140),pauseMs:clamp(s.pauseMs,-2000,2000,400),fontSize:clamp(s.fontSize,16,28,21),autoScroll:typeof s.autoScroll==='boolean'?s.autoScroll:true,theme:Math.trunc(clamp(s.theme,0,2,0))};
+      settings={voice:typeof s.voice==='string'?s.voice:'auto',rate:clamp(s.rate,0.8,1.5,0.95),pitch:clamp(s.pitch,0.7,1.3,1),volume:clamp(s.volume,0,1,1),trim:clamp(s.trim,0,280,140),pauseMs:clamp(s.pauseMs,-2000,2000,400),blockSize:Math.trunc(clamp(s.blockSize,1,MAX_BLOCK_SENTENCES,1)),fontSize:clamp(s.fontSize,16,28,21),autoScroll:typeof s.autoScroll==='boolean'?s.autoScroll:true,theme:Math.trunc(clamp(s.theme,0,2,0))};
       if(saved.version<6)settings.theme=0;
       index=saved.version>=5?Math.trunc(clamp(saved.index,0,100000,0)):0;
       completed=saved.version>=5&&saved.completed===true;
@@ -2683,7 +2698,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
   }
   function clearJob(j) {
     if(!j)return;
-    clearTimeout(j.watchdog);clearTimeout(j.gapTimer);clearInterval(j.trimTimer);j.dead=true;
+    clearTimeout(j.watchdog);clearTimeout(j.gapTimer);clearTimeout(j.retryTimer);clearInterval(j.trimTimer);j.dead=true;
     if(j.audio){j.audio.onended=j.audio.onerror=j.audio.onloadedmetadata=null;j.audio.pause();}
     if(j.utterance){j.utterance.onend=j.utterance.onerror=j.utterance.onstart=j.utterance.onboundary=null;}
   }
@@ -2695,6 +2710,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
   }
   function cancelReading() {
     generation++;
+    readingBlock=nextBlock=null;
     const wasSynth=!!job?.utterance;clearJob(job);job=null;
     if(wasSynth&&synth){synth.cancel();synth.resume();}
     for(const a of decks){a.onended=a.onerror=a.onloadedmetadata=null;a.pause();}
@@ -2707,8 +2723,41 @@ button, select, input, textarea { font-family: var(--font-sans); }
     const code=message.match(/^\[([A-Z0-9-]+)\]/)?.[1];
     cancelReading();status('ERROR',code?'ОШИБКА · '+code:'');notice(message+' Текущая фраза не пропущена. Нажми «Старт», чтобы повторить.',true);persist();
   }
+  function retryableError(error) {
+    if(error?.retryable!==undefined)return error.retryable;
+    const message=String(error?.message||error);
+    if(/\[(?:GOOGLE-LENGTH|MS-INIT|MS-REQUEST|MS-FRAME-INIT|MS-ISOLATED-AUDIO|HTTP-(?:400|401|403|404|413))\]/.test(message))return false;
+    return /\[(?:MS-(?:CONNECT|TRANSFER|CLOSE|TIMEOUT|INCOMPLETE|PACKET|SEND|ISOLATED-TIMEOUT)|AUDIO-(?:1|2|TIMEOUT|AbortError|NetworkError)|SPEECH-NETWORK|HTTP-(?:408|425|429|5\d\d))\]/.test(message)||['TypeError','TimeoutError','AbortError','NetworkError'].includes(error?.name);
+  }
+  function retryReading(j,error) {
+    if(j!==job||j.dead||j.type==='retry')return;
+    const message=String(error?.message||error);
+    if(!retryableError(error)){fail(j,message+' Выбранный голос не заменён.');return;}
+    clearTimeout(j.watchdog);clearInterval(j.trimTimer);
+    j.watchdog=null;
+    if(j.audio){j.audio.onended=j.audio.onerror=j.audio.onloadedmetadata=null;j.audio.pause();j.audio=null;}
+    if(j.utterance){j.utterance.onend=j.utterance.onerror=j.utterance.onstart=j.utterance.onboundary=null;synth?.cancel();j.utterance=null;}
+    const offline=navigator.onLine===false;
+    j.retryAttempts=(j.retryAttempts||0)+(offline?0:1);
+    if(j.retryAttempts>RETRY_DELAYS.length){fail(j,'[RETRY-LIMIT] Сервис не восстановился после '+RETRY_DELAYS.length+' попыток. '+message);return;}
+    const delay=Math.max(offline?30000:RETRY_DELAYS[Math.max(0,j.retryAttempts-1)],error?.retryAfterMs||0);
+    j.type='retry';j.retryAt=Date.now()+delay;
+    j.retryNotBefore=error?.retryAfterMs?j.retryAt:0;
+    j.retryMessage=message;
+    if(mode==='PAUSED'){persist();return;}
+    status('RECONNECTING',offline?'НЕТ СЕТИ · ЖДУ ПОДКЛЮЧЕНИЯ':'ПЕРЕПОДКЛЮЧЕНИЕ · '+j.retryAttempts+' / '+RETRY_DELAYS.length);
+    notice(message+' '+(offline?'Проверю подключение автоматически.':'Повтор через '+Math.ceil(delay/1000)+' с.')+' Позиция и выбранный голос сохранены. «Пауза» отменяет автоматическое продолжение.',false,true);
+    j.retryTimer=setTimeout(()=>retryNow(),delay);persist();
+  }
+  function retryNow(fromOnline=false) {
+    const j=job;if(!j||j.dead||j.type!=='retry'||!active())return;
+    if(sleepDeadline&&Date.now()>=sleepDeadline){pause();return;}
+    if(Date.now()<(fromOnline?j.retryNotBefore:j.retryAt))return;
+    const attempts=j.retryAttempts;
+    clearJob(j);job=null;speak(attempts);
+  }
   function finish(j) {
-    if(j!==job||j.dead||j.type==='gap')return;
+    if(j!==job||j.dead||j.type==='gap'||j.type==='retry')return;
     clearTimeout(j.watchdog);clearInterval(j.trimTimer);
     if(mode==='PAUSED'){j.endedWhilePaused=true;return;}
     if(!active())return;
@@ -2729,7 +2778,9 @@ button, select, input, textarea { font-family: var(--font-sans); }
   function armWatchdog(j,ms) {
     clearTimeout(j.watchdog);j.remaining=ms;j.startedAt=Date.now();
     j.watchdog=setTimeout(()=>{
-      if(!j.utterance&&(j.type==='loading'||j.type==='audio')&&(!j.audio||j.audio.currentTime===0))audioFallback(j,'Сетевой источник не ответил вовремя.');
+      if(j!==job||j.dead||!active())return;
+      if(!j.utterance&&(j.type==='loading'||j.type==='audio'))audioFallback(j,'[AUDIO-TIMEOUT] Сетевой источник не завершил загрузку или воспроизведение вовремя.');
+      else if(j.utterance?.voice&&!j.utterance.voice.localService)retryReading(j,'[SPEECH-NETWORK] Голос браузера не завершил фразу.');
       else fail(j,'Голос не завершил фразу или источник аудио не ответил.');
     },ms);
   }
@@ -2738,6 +2789,8 @@ button, select, input, textarea { font-family: var(--font-sans); }
     status('PAUSED');
     for(const audio of overlapping)audio.pause();
     if(job){
+      clearTimeout(job.retryTimer);job.retryTimer=null;
+      if(job.type==='retry')notice('Переподключение приостановлено. Нажми ▶, чтобы продолжить чтение.',false,true);
       if(job.type==='gap'){job.elapsed+=performance.now()-job.gapStarted;clearTimeout(job.gapTimer);}
       if(job.watchdog){clearTimeout(job.watchdog);job.watchdog=null;job.remaining=Math.max(1000,(job.remaining||30000)-(Date.now()-job.startedAt));}
       clearInterval(job.trimTimer);
@@ -2750,6 +2803,11 @@ button, select, input, textarea { font-family: var(--font-sans); }
     if(!job){start();return;}
     for(const audio of overlapping)audio.play().catch(()=>notice('Не удалось продолжить предыдущую фразу.',true));
     const j=job;
+    if(j.type==='retry'){
+      status('RECONNECTING','ПЕРЕПОДКЛЮЧЕНИЕ');j.retryAt=Math.max(Date.now(),j.retryNotBefore||0);
+      if(j.retryAt>Date.now())j.retryTimer=setTimeout(()=>retryNow(),j.retryAt-Date.now());else retryNow();
+      return;
+    }
     if(j.type==='gap'){status('PLAYING','ПАУЗА МЕЖДУ ПРЕДЛОЖЕНИЯМИ');scheduleGap(j);return;}
     if(j.endedWhilePaused){status('PLAYING');finish(j);return;}
     if(j.type==='loading'){status('LOADING');armWatchdog(j,j.remaining||20000);return;}
@@ -2889,6 +2947,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
     $('lblPitch').textContent=google?'Недоступно для MP3':settings.pitch.toFixed(2);
     $('rangePauseMs').disabled=false;
     $('lblPauseMs').textContent=settings.pauseMs+' мс';
+    updateBlockControl();
     $('metaEngineBadge').textContent=direct?'MICROSOFT · НАПРЯМУЮ':edge?'MICROSOFT · ГОЛОСОВОЙ МОСТ':google?'GOOGLE · СЕТЕВОЙ MP3':nativeEdgeId(v)?'MICROSOFT EDGE · БЕЗ МОСТА':'ГОЛОС УСТРОЙСТВА';
     $('sourceHint').textContent=direct?'Microsoft · '+(microsoftVoices.find(v=>v.id===directVoiceId())?.name||'выбранный голос')+' · прямой сетевой синтез, без EXE и компьютера-посредника. Текст передаётся только Microsoft. Нужен Edge и интернет; другой голос при ошибке не включается.':edge?remote?'Microsoft · '+remote.name+' · через локальный мост. Текст для озвучки отправляется Microsoft. Голос при ошибке не подменяется.':bridgeState==='loading'?'Подключаю голосовой мост…':bridgeError||'Для сохранённого голоса моста нет подключения. Выбери прямое подключение Microsoft Online.':google?'Экспериментальный сетевой MP3 · '+(selectedLanguage()==='en'?'English':'русский')+': фразы передаются Google, доступность зависит от сервиса. Системный голос вместо Google не включается. Лимит — 180 символов на предложение. Если звук заблокирован, запись сохраняется до повторного нажатия ▶.':v?'Выбран: '+v.name+(nativeEdgeId(v)?' · напрямую через Edge, без EXE и отдельного моста. Нужен интернет; текст передаётся Microsoft.':v.localService?' · локальный, без передачи текста в сеть.':' · сетевой голос браузера, требует интернета.'):'Выбранный браузерный голос не обнаружен. Обнови список в настройках звука. Отдельное сетевое подключение Microsoft не означает доступность голоса через браузерный API.';
     $('deckSlotA').textContent=google?'ДЕКА A':'РЕЧЬ';$('deckSlotB').textContent=google?'ДЕКА B':'СИНТЕЗ';
@@ -2905,7 +2964,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
     notice(sourceWarning||'Источник: '+voice.name+(voice.localService?' · локальный голос':' · сетевой голос браузера'));
     u.onstart=()=>{if(j!==job||j.dead)return;if(mode==='PAUSED')synth.pause();else {status('PLAYING','ЧТЕНИЕ · '+voice.name);if(ios)armWatchdog(j,Math.max(20000,text.length*220/settings.rate+10000));}};
     u.onend=()=>finish(j);
-    u.onerror=e=>{if(j!==job||j.dead)return;fail(j,'Синтез речи: '+(e.error||'неизвестная ошибка')+'.');};
+    u.onerror=e=>{if(j!==job||j.dead)return;if(e.error==='network')retryReading(j,'[SPEECH-NETWORK] Прервано подключение к сетевому голосу браузера.');else fail(j,'Синтез речи: '+(e.error||'неизвестная ошибка')+'.');};
     armWatchdog(j,ios?45000:Math.max(20000,text.length*220/settings.rate+10000));
     synth.resume();synth.speak(u);
   }
@@ -2925,6 +2984,15 @@ button, select, input, textarea { font-family: var(--font-sans); }
       return Math.max(0,samples/buffer.sampleRate-0.06);
     }catch(_){return 0;}finally{await context.close().catch(()=>{});}
   }
+  function cacheSource(key,source) {
+    cache.set(key,source);
+    for(const [oldKey,old] of cache) {
+      if(cache.size<=MAX_BLOCK_SENTENCES*2+4)break;
+      const buffered=[readingBlock,nextBlock].some(block=>block&&[...block.sources.values()].includes(old));
+      if(buffered||decks.some(a=>a.src===old.url)||$('previewAudio').src===old.url)continue;
+      cache.delete(oldKey);if(old.blob)URL.revokeObjectURL(old.url);
+    }
+  }
   async function getCloud(text,lang=selectedLanguage()) {
     const key=lang+'|'+text;
     if(cache.has(key))return cache.get(key);
@@ -2940,9 +3008,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
         source={url:URL.createObjectURL(blob),tail:await silenceTail(blob),blob:true};
       }catch(error){source.fetchError=error.name==='AbortError'?'Google не ответил на загрузку MP3 за 4 секунды.':'Загрузка MP3 Google через fetch: '+(/^HTTP \d+$|^Нет аудио$/.test(error.message)?error.message:error.name)+'.';}
       finally{clearTimeout(timer);}
-      cache.set(key,source);
-      // Keep current deck URLs alive even when an old cache entry is evicted.
-      if(cache.size>24){const [key,old]=cache.entries().next().value;cache.delete(key);if(old.blob&&!decks.some(a=>a.src===old.url)&&$('previewAudio').src!==old.url)URL.revokeObjectURL(old.url);}
+      cacheSource(key,source);
       return source;
     })();
     inflight.set(key,promise);
@@ -2957,13 +3023,18 @@ button, select, input, textarea { font-family: var(--font-sans); }
     if(inflight.has(key))return inflight.get(key);
     const promise=(async()=>{
       const response=await fetch(bridge.baseUrl+'api/tts',{method:'POST',headers:{'Content-Type':'application/json','X-Tishe-Session':bridge.token},body:JSON.stringify({voice,text,rate,pitch}),signal:AbortSignal.timeout(95000)});
-      if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error||'Microsoft не завершил синтез.');}
+      if(!response.ok){
+        const data=await response.json().catch(()=>({}));
+        const error=new Error('[HTTP-'+response.status+'] '+(data.error||'Microsoft не завершил синтез.'));
+        const retryAfter=response.headers.get('Retry-After');
+        error.retryAfterMs=retryAfter?Math.max(0,Number.isFinite(Number(retryAfter))?Number(retryAfter)*1000:Date.parse(retryAfter)-Date.now())||0:0;
+        throw error;
+      }
       if(response.headers.get('X-Tishe-Complete')!=='1'||response.headers.get('X-Tishe-Voice')!==voice)throw new Error('Мост не подтвердил выбранный голос и завершение синтеза.');
       const audio=await response.blob();
       if(!audio.type.startsWith('audio/')||audio.size<1000)throw new Error('Мост не вернул аудио.');
       const source={url:URL.createObjectURL(audio),blob:true,tail:0,engine:'edge',playbackRate:1,label:'Microsoft · '+bridgeVoices.find(v=>v.id===voice)?.name};
-      cache.set(key,source);
-      if(cache.size>24){const [oldKey,old]=cache.entries().next().value;cache.delete(oldKey);if(old.blob&&!decks.some(a=>a.src===old.url)&&$('previewAudio').src!==old.url)URL.revokeObjectURL(old.url);}
+      cacheSource(key,source);
       return source;
     })();
     inflight.set(key,promise);
@@ -2977,14 +3048,65 @@ button, select, input, textarea { font-family: var(--font-sans); }
     const promise=(async()=>{
       const audio=await directMicrosoft.synthesize(voice,text,rate,pitch);
       const source={url:URL.createObjectURL(audio.blob),blob:true,tail:0,engine:'microsoft-direct',playbackRate:1,label:'Microsoft · '+microsoftVoices.find(v=>v.id===voice)?.name};
-      cache.set(key,source);
-      if(cache.size>24){const [oldKey,old]=cache.entries().next().value;cache.delete(oldKey);if(old.blob&&!decks.some(a=>a.src===old.url)&&$('previewAudio').src!==old.url)URL.revokeObjectURL(old.url);}
+      cacheSource(key,source);
       return source;
     })();
     inflight.set(key,promise);
     try{return await promise;}finally{inflight.delete(key);}
   }
   const getNetworkAudio = text => directSelected()?getDirectAudio(text):edgeSelected()?getEdgeAudio(text):getCloud(text);
+  const blockSupported = () => directSelected()||edgeSelected();
+  function makeBlock(start) {
+    return {start,end:Math.min(segments.length,start+settings.blockSize),id:generation,sources:new Map(),pending:null,cancelled:false,prefetched:false};
+  }
+  function loadBlock(block) {
+    if(block.pending)return block.pending;
+    block.pending=(async()=>{
+      for(let i=block.start;i<block.end;i++) {
+        if(block.cancelled||block.id!==generation)throw new DOMException('Reading cancelled','AbortError');
+        if(block.sources.has(i))continue;
+        block.onProgress?.();
+        const source=await getNetworkAudio(segments[i].text);
+        if(block.cancelled||block.id!==generation)throw new DOMException('Reading cancelled','AbortError');
+        block.sources.set(i,source);block.onProgress?.();
+      }
+      return block;
+    })().finally(()=>{block.pending=null;});
+    return block.pending;
+  }
+  async function getReadingAudio(j) {
+    if(!blockSupported())return getNetworkAudio(segments[index].text);
+    if(!readingBlock||index<readingBlock.start||index>=readingBlock.end) {
+      readingBlock=nextBlock?.start===index?nextBlock:makeBlock(index);nextBlock=null;
+    }
+    const block=readingBlock,current=index;
+    block.onProgress=()=>{
+      if(j!==job||j.dead||!active()||j.type!=='loading')return;
+      armWatchdog(j,98000);
+      status('LOADING','ЗАГРУЗКА БЛОКА · '+block.sources.size+' / '+(block.end-block.start));
+    };
+    block.onProgress();
+    await loadBlock(block);
+    return block.sources.get(current);
+  }
+  function prefetchReadingAudio(j) {
+    const position=index+1;if(!segments[position])return;
+    const ready=source=>{
+      if(j!==job||j.dead||!active())return;
+      j.nextReady=true;
+      const standby=decks[1-deck];if(!overlapping.has(standby)){standby.src=source.url;standby.load();}
+      $('deckSlot'+(deck?'A':'B')).classList.add('standby-ready');
+    };
+    if(!blockSupported()){getNetworkAudio(segments[position].text).then(ready).catch(()=>{});return;}
+    if(readingBlock?.sources.has(position))ready(readingBlock.sources.get(position));
+    if(readingBlock.end>=segments.length)return;
+    if(!nextBlock)nextBlock=makeBlock(readingBlock.end);
+    const block=nextBlock;
+    // One sequential background batch, not twenty parallel service requests.
+    if(!block.prefetched){block.prefetched=true;loadBlock(block).catch(()=>{});}
+    if(position===block.start&&block.pending)block.pending.then(()=>ready(block.sources.get(position))).catch(()=>{});
+    else if(position===block.start&&block.sources.has(position))ready(block.sources.get(position));
+  }
   function startTrimTimer(j) {
     clearInterval(j.trimTimer);
     const tail=Math.min(settings.trim/1000,j.source?.tail||0);
@@ -3000,8 +3122,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
   }
   function audioFallback(j,message) {
     if(j!==job||j.dead||j.fallback)return;
-    if(directSelected()||edgeSelected()||['edge','microsoft-direct'].includes(j.source?.engine)){fail(j,message+' Голос Microsoft не заменён другим.');return;}
-    if(googleSelected()){fail(j,message+' Google не заменён системным голосом.');return;}
+    if(networkSelected()||['edge','microsoft-direct'].includes(j.source?.engine)){retryReading(j,message);return;}
     j.fallback=true;clearTimeout(j.watchdog);clearInterval(j.trimTimer);
     if(j.audio){j.audio.onended=j.audio.onerror=j.audio.onloadedmetadata=null;j.audio.pause();j.audio=null;}
     cloudDeadUntil=Date.now()+60000;
@@ -3014,7 +3135,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
     j.source=source;j.type='audio';deck=1-deck;
     const a=decks[deck];j.audio=a;
     a.onended=a.onerror=a.onloadedmetadata=null;a.pause();
-    if(a.src!==source.url){a.src=source.url;a.load();}else{try{a.currentTime=0;}catch(_){}}
+    if(a.src!==source.url||a.error||j.retryAttempts){a.src=source.url;a.load();}else{try{a.currentTime=0;}catch(_){}}
     a.volume=settings.volume;a.playbackRate=source.playbackRate??settings.rate;a.preservesPitch=true;
     updateSourceHint();sourceLabel=source.label||'Google MP3';
     status('LOADING','ЗАГРУЗКА · '+sourceLabel);
@@ -3029,45 +3150,41 @@ button, select, input, textarea { font-family: var(--font-sans); }
   }
   function playReadingAudio(j) {
     const a=j.audio;
+    const playToken=Symbol();a.tishePlayToken=playToken;
     const wasWaiting=j.needsTap;
     j.needsTap=false;
     armWatchdog(j,8000);
     // Keep play() directly in this call stack: resume() is entered from the user's tap.
     a.play().then(()=>{
-      if(j!==job||j.dead||mode==='PAUSED'){a.pause();return;}
+      if(a.tishePlayToken!==playToken)return;
+      if(j!==job||j.dead||mode==='PAUSED'||j.type==='retry'){a.pause();return;}
       if(j.fallback){a.pause();return;}
       armWatchdog(j,Math.max(20000,segments[index].text.length*220/settings.rate+12000));
       if(wasWaiting)notice('Источник: '+(j.source.label||'Google MP3')+' · выбранный голос сохранён.');
       status('PLAYING','ЧТЕНИЕ · '+sourceLabel);startTrimTimer(j);
-      const next=segments[index+1];
-      if(next)getNetworkAudio(next.text).then(s=>{
-        if(j!==job||j.dead||!active())return;
-        j.nextReady=true;
-        const standby=decks[1-deck];if(!overlapping.has(standby)){standby.src=s.url;standby.load();}
-        $('deckSlot'+(deck?'A':'B')).classList.add('standby-ready');
-      }).catch(()=>{});
+      prefetchReadingAudio(j);
     }).catch(e=>{
-      if(j!==job||j.dead||mode==='PAUSED')return;
+      if(a.tishePlayToken!==playToken||j!==job||j.dead||mode==='PAUSED'||j.type==='retry')return;
       if(e.name==='NotAllowedError'){
         pause();j.needsTap=true;status('PAUSED','ЗАПИСЬ ГОТОВА · НАЖМИ ▶');
         notice('[AUDIO-TAP] Браузер требует прямого нажатия для '+(j.source.label||'Google MP3')+'. Нажми ▶ ещё раз: источник сохранён, повторный запрос синтеза и смена голоса не нужны.',false,true);
       }else audioFallback(j,mediaErrorMessage(a,j.source,e));
     });
   }
-  function speak() {
+  function speak(retryAttempts=0) {
     if(!active()||!segments[index])return;
-    const j={id:generation,type:'loading',dead:false};job=j;
+    const j={id:generation,type:'loading',dead:false,retryAttempts};job=j;
     highlight();persist();
     if(googleSelected()&&segments[index].text.length>MAX_CHUNK) {
       fail(j,'[GOOGLE-LENGTH] Предложение длиннее ограничения этого режима Google MP3 (180 символов). Раздели предложение или выбери другой источник; системный голос не включён.');return;
     }
     if(!networkSelected()) {speakNative(j,segments[index].text);return;}
     status('LOADING');armWatchdog(j,directSelected()||edgeSelected()?98000:8000);
-    getNetworkAudio(segments[index].text).then(source=>{
-      if(j!==job||j.dead||j.id!==generation||j.fallback)return;
+    getReadingAudio(j).then(source=>{
+      if(j!==job||j.dead||j.id!==generation||j.fallback||j.type==='retry')return;
       if(mode==='PAUSED'){j.source=source;j.type='ready';return;}
       if(active())playAudio(j,source);
-    }).catch(error=>audioFallback(j,directSelected()||edgeSelected()?error.message:'Не удалось загрузить голос.'));
+    }).catch(error=>audioFallback(j,error));
   }
   function seek(value,autoStart=false) {
     if(!segments.length)return;
@@ -3090,6 +3207,19 @@ button, select, input, textarea { font-family: var(--font-sans); }
     $('rangePauseMs').value=settings.pauseMs;fill($('rangePauseMs'));$('lblPauseMs').textContent=settings.pauseMs+' мс';
     if(job?.type==='gap'&&active()){job.elapsed+=performance.now()-job.gapStarted;scheduleGap(job);}
     persist();
+  }
+  function updateBlockControl() {
+    const control=$('rangeBlockSize');if(!control)return;
+    control.value=settings.blockSize;control.disabled=!blockSupported();fill(control);
+    const n=settings.blockSize,label=n===1?'предложение':n<5?'предложения':'предложений';
+    $('lblBlockSize').textContent=n+' '+label;
+    control.setAttribute('aria-valuetext',n+' '+label);
+    $('blockSizeHelp').textContent=blockSupported()?'Запас аудио: от 1 до 20 предложений. Больше — дольше первая загрузка, но больше готового звука при обрыве сети. Паузы и переходы остаются по предложениям. Новый размер применяется со следующего блока.':'Запас целых записей доступен для Microsoft Online и голосового моста. Голоса браузера и Google MP3 продолжают читать по одному предложению.';
+  }
+  function setBlockSize(v) {
+    settings.blockSize=Math.trunc(clamp(v,1,MAX_BLOCK_SENTENCES,1));
+    if(nextBlock){nextBlock.cancelled=true;nextBlock=null;}
+    updateBlockControl();persist();
   }
   function setFontSize(v){settings.fontSize=clamp(v,16,28,21);document.documentElement.style.setProperty('--reader-font-size',settings.fontSize+'px');$('rangeFontSize').value=settings.fontSize;$('lblFontSize').textContent=settings.fontSize+'px';fill($('rangeFontSize'));persist();}
   function setAutoScroll(v){settings.autoScroll=!!v;$('chkAutoScroll').checked=settings.autoScroll;persist();}
@@ -3277,6 +3407,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
   }
 
   window.AuraApp={togglePlay,stop,prev:previous,next,seekToIndex:v=>seek(v),toggleEditor,toggleStudio,saveEditorText,clearAllText,clearEditorArea,pasteFromClipboardAndRead,pasteIntoEditorArea,importTextFile,exportText,toggleFocus,cycleTheme,toggleOled,setRate,setPitch,setVolume,setPauseMs,setFontSize,setAutoScroll,setSleepTimer,previewSelectedVoice,stopPreview,refreshBridge,onVoiceChange(v){settings.voice=v;cloudDeadUntil=0;sourceWarning='';populateVoices();restartSettings();}};
+  window.AuraApp.setBlockSize=setBlockSize;
   window.AuraApp.refreshBrowserVoices=populateVoices;
 
   for(const id of ['editorTextarea','editDocTitle'])$(id).addEventListener('input',draftChanged);
@@ -3298,7 +3429,8 @@ button, select, input, textarea { font-family: var(--font-sans); }
     if(modal||e.altKey||e.ctrlKey||e.metaKey||e.repeat||e.target.closest('button,input,textarea,select,[contenteditable="true"],[role="button"]'))return;
     if(e.code==='Space'){e.preventDefault();togglePlay();}else if(e.key==='ArrowLeft'){e.preventDefault();previous();}else if(e.key==='ArrowRight'){e.preventDefault();next();}
   });
-  document.addEventListener('visibilitychange',()=>{cancelHold();wakeLock();});
+  window.addEventListener('online',()=>retryNow(true));
+  document.addEventListener('visibilitychange',()=>{cancelHold();wakeLock();if(document.visibilityState==='visible')retryNow();});
   window.addEventListener('resize',layout);
   if(window.ResizeObserver){const observer=new ResizeObserver(layout);observer.observe($('topHeaderBar'));observer.observe($('bottomDockWrapper'));}
   if(synth)synth.addEventListener('voiceschanged',populateVoices);

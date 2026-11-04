@@ -2539,7 +2539,8 @@ button, select, input, textarea { font-family: var(--font-sans); }
   const LIMIT = 1000000;
   const MAX_CHUNK = 180;
   const MAX_BLOCK_SENTENCES = 20;
-  const RETRY_DELAYS = [2000,4000,8000,16000,30000,60000,60000,60000];
+  const RETRY_LIMIT = 20;
+  const RETRY_DELAY_MS = 2000;
   const decks = [$('neuralAudioA'), $('neuralAudioB')];
   const overlapping = new Set();
   const cache = new Map();
@@ -2739,13 +2740,13 @@ button, select, input, textarea { font-family: var(--font-sans); }
     if(j.utterance){j.utterance.onend=j.utterance.onerror=j.utterance.onstart=j.utterance.onboundary=null;synth?.cancel();j.utterance=null;}
     const offline=navigator.onLine===false;
     j.retryAttempts=(j.retryAttempts||0)+(offline?0:1);
-    if(j.retryAttempts>RETRY_DELAYS.length){fail(j,'[RETRY-LIMIT] Сервис не восстановился после '+RETRY_DELAYS.length+' попыток. '+message);return;}
-    const delay=Math.max(offline?30000:RETRY_DELAYS[Math.max(0,j.retryAttempts-1)],error?.retryAfterMs||0);
+    if(j.retryAttempts>RETRY_LIMIT){fail(j,'[RETRY-LIMIT] Сервис не восстановился после '+RETRY_LIMIT+' попыток. '+message);return;}
+    const delay=Math.max(RETRY_DELAY_MS,error?.retryAfterMs||0);
     j.type='retry';j.retryAt=Date.now()+delay;
     j.retryNotBefore=error?.retryAfterMs?j.retryAt:0;
     j.retryMessage=message;
     if(mode==='PAUSED'){persist();return;}
-    status('RECONNECTING',offline?'НЕТ СЕТИ · ЖДУ ПОДКЛЮЧЕНИЯ':'ПЕРЕПОДКЛЮЧЕНИЕ · '+j.retryAttempts+' / '+RETRY_DELAYS.length);
+    status('RECONNECTING',offline?'НЕТ СЕТИ · ЖДУ ПОДКЛЮЧЕНИЯ':'ПЕРЕПОДКЛЮЧЕНИЕ · '+j.retryAttempts+' / '+RETRY_LIMIT);
     notice(message+' '+(offline?'Проверю подключение автоматически.':'Повтор через '+Math.ceil(delay/1000)+' с.')+' Позиция и выбранный голос сохранены. «Пауза» отменяет автоматическое продолжение.',false,true);
     j.retryTimer=setTimeout(()=>retryNow(),delay);persist();
   }
@@ -3087,7 +3088,16 @@ button, select, input, textarea { font-family: var(--font-sans); }
     };
     block.onProgress();
     await loadBlock(block);
+    prefetchNextBlock(block);
     return block.sources.get(current);
+  }
+  function prefetchNextBlock(block) {
+    if(!block||block!==readingBlock||block.cancelled||block.id!==generation||block.end>=segments.length)return null;
+    if(!nextBlock)nextBlock=makeBlock(block.end);
+    const next=nextBlock;
+    // Start the next sequential batch without waiting for playback or a sentence gap.
+    if(!next.prefetched){next.prefetched=true;loadBlock(next).catch(()=>{});}
+    return next;
   }
   function prefetchReadingAudio(j) {
     const position=index+1;if(!segments[position])return;
@@ -3099,11 +3109,7 @@ button, select, input, textarea { font-family: var(--font-sans); }
     };
     if(!blockSupported()){getNetworkAudio(segments[position].text).then(ready).catch(()=>{});return;}
     if(readingBlock?.sources.has(position))ready(readingBlock.sources.get(position));
-    if(readingBlock.end>=segments.length)return;
-    if(!nextBlock)nextBlock=makeBlock(readingBlock.end);
-    const block=nextBlock;
-    // One sequential background batch, not twenty parallel service requests.
-    if(!block.prefetched){block.prefetched=true;loadBlock(block).catch(()=>{});}
+    const block=prefetchNextBlock(readingBlock);if(!block)return;
     if(position===block.start&&block.pending)block.pending.then(()=>ready(block.sources.get(position))).catch(()=>{});
     else if(position===block.start&&block.sources.has(position))ready(block.sources.get(position));
   }

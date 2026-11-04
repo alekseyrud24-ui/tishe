@@ -1,0 +1,3968 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="referrer" content="no-referrer">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <title>AURA READER — Ночной редакционный салон и двухдековая нейростудия</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ==========================================================================
+       1. СЕМАНТИЧЕСКАЯ ТРЁХТЕМНАЯ ПАЛИТРА И ГЛОБАЛЬНЫЕ ТОКЕНЫ
+       ========================================================================== */
+    :root,
+    [data-theme="dark"] {
+      --bg-canvas: #0B0C0E;
+      --bg-sheet: #121418;
+      --bg-elevated: #1A1D24;
+      --bg-glass-dock: rgba(18, 20, 24, 0.84);
+      --text-primary: #ECE7DF;
+      --text-secondary: #8E95A5;
+      --accent-amber: #D99B52;
+      --accent-glow: rgba(217, 155, 82, 0.14);
+      --status-live: #5EBA8D;
+      --status-danger: #D96B66;
+      --border-hairline: rgba(236, 231, 223, 0.08);
+      --border-specular: rgba(255, 255, 255, 0.06);
+      --shadow-hardware: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 20px 50px rgba(0, 0, 0, 0.65);
+      --shadow-sheet: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 24px 60px rgba(0, 0, 0, 0.55);
+      --backdrop-overlay: rgba(6, 7, 9, 0.68);
+    }
+
+    [data-theme="light"] {
+      --bg-canvas: #EFECE6;
+      --bg-sheet: #FAF7F0;
+      --bg-elevated: #E5E0D5;
+      --bg-glass-dock: rgba(250, 247, 240, 0.86);
+      --text-primary: #18181A;
+      --text-secondary: #63666E;
+      --accent-amber: #9E6324;
+      --accent-glow: rgba(158, 99, 36, 0.11);
+      --status-live: #237852;
+      --status-danger: #B83A35;
+      --border-hairline: rgba(24, 24, 26, 0.09);
+      --border-specular: rgba(255, 255, 255, 0.65);
+      --shadow-hardware: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 18px 44px rgba(24, 24, 26, 0.14);
+      --shadow-sheet: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 14px 36px rgba(24, 24, 26, 0.08);
+      --backdrop-overlay: rgba(24, 24, 26, 0.36);
+    }
+
+    [data-theme="oled"] {
+      --bg-canvas: #000000;
+      --bg-sheet: #040404;
+      --bg-elevated: #0D0E11;
+      --bg-glass-dock: rgba(8, 8, 10, 0.94);
+      --text-primary: #D8D4CD;
+      --text-secondary: #737373;
+      --accent-amber: #D99B52;
+      --accent-glow: rgba(217, 155, 82, 0.18);
+      --status-live: #4FA87C;
+      --status-danger: #D96B66;
+      --border-hairline: rgba(255, 255, 255, 0.11);
+      --border-specular: rgba(255, 255, 255, 0.05);
+      --shadow-hardware: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 24px 60px rgba(0, 0, 0, 0.95);
+      --shadow-sheet: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 0 1px rgba(255, 255, 255, 0.04);
+      --backdrop-overlay: rgba(0, 0, 0, 0.84);
+    }
+
+    :root {
+      --font-serif: 'Newsreader', 'Cormorant Garamond', Georgia, serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --reader-font-size: 21px;
+      --reader-line-height: 1.8;
+      --sheet-max-width: 780px;
+      --layout-top-pad: 96px;
+      --layout-bottom-pad: 184px;
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-tactile: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100vh;
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+      transition: background-color 320ms var(--ease-out-expo), color 320ms var(--ease-out-expo);
+    }
+
+    ::selection {
+      background: var(--accent-glow);
+      color: var(--accent-amber);
+    }
+
+    /* Скрытый SVG-контейнер для фильтров и спрайтов */
+    .svg-defs-vault {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    /* Универсальная типографика и табличные числа */
+    .mono-tabular {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+
+    .section-eyebrow {
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    /* ==========================================================================
+       2. АППАРАТНЫЕ КНОПКИ, СЕЛЕКТОРЫ И ТАКТИЛЬНЫЕ ЭЛЕМЕНТЫ УПРАВЛЕНИЯ
+       ========================================================================== */
+    .btn {
+      position: relative;
+      min-height: 36px;
+      padding: 6px 12px;
+      border-radius: 9px;
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      white-space: nowrap;
+      user-select: none;
+      box-shadow: inset 0 1px 0 var(--border-specular);
+      transition:
+        background-color 180ms var(--ease-tactile),
+        border-color 180ms var(--ease-tactile),
+        color 180ms var(--ease-tactile),
+        transform 180ms var(--ease-tactile),
+        box-shadow 180ms var(--ease-tactile);
+    }
+
+    .btn svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    .btn:hover {
+      border-color: var(--accent-amber);
+      background: var(--accent-glow);
+    }
+
+    .btn:active {
+      transform: scale(0.95);
+    }
+
+    .btn:focus-visible,
+    .hardware-select:focus-visible,
+    .range-slider:focus-visible {
+      outline: 2px solid var(--accent-amber);
+      outline-offset: 2px;
+    }
+
+    .btn.active,
+    .btn.primary {
+      background: var(--accent-amber);
+      color: #0B0C0E;
+      border-color: var(--accent-amber);
+      font-weight: 600;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 6px 18px var(--accent-glow);
+    }
+
+    .btn.primary:hover {
+      filter: brightness(1.06);
+    }
+
+    .btn.danger-subtle {
+      color: var(--text-secondary);
+    }
+
+    .btn.danger-subtle:hover {
+      color: var(--status-danger);
+      border-color: var(--status-danger);
+      background: rgba(217, 107, 102, 0.12);
+    }
+
+    /* Двухшаговое подтверждение очистки (2500 мс) */
+    .btn.is-armed-danger {
+      background: rgba(217, 107, 102, 0.18) !important;
+      color: var(--status-danger) !important;
+      border-color: var(--status-danger) !important;
+      box-shadow: 0 0 0 1px rgba(217, 107, 102, 0.25);
+    }
+
+    /* Аппаратный селектор */
+    .select-shell {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .hardware-select {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      height: 36px;
+      padding: 0 28px 0 11px;
+      border-radius: 9px;
+      border: 1px solid var(--border-hairline);
+      background-color: var(--bg-elevated);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: inset 0 1px 0 var(--border-specular);
+      transition: border-color 180ms var(--ease-tactile), background-color 180ms var(--ease-tactile);
+    }
+
+    .hardware-select:hover {
+      border-color: var(--accent-amber);
+    }
+
+    .select-chevron {
+      position: absolute;
+      right: 9px;
+      pointer-events: none;
+      width: 13px;
+      height: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* Кастомные ползунки с градиентным треком заполнения (--val-pct) */
+    .range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(
+        to right,
+        var(--accent-amber) 0%,
+        var(--accent-amber) var(--val-pct, 50%),
+        var(--bg-canvas) var(--val-pct, 50%),
+        var(--bg-canvas) 100%
+      );
+      border: 1px solid var(--border-hairline);
+      cursor: pointer;
+      margin: 4px 0;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text-primary);
+      border: 2px solid var(--accent-amber);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+      cursor: pointer;
+      transition: transform 180ms var(--ease-tactile), background-color 180ms var(--ease-tactile);
+    }
+
+    .range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.14);
+      background: var(--accent-amber);
+    }
+
+    .range-slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text-primary);
+      border: 2px solid var(--accent-amber);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+      cursor: pointer;
+      transition: transform 180ms var(--ease-tactile);
+    }
+
+    /* ==========================================================================
+       3. МОДУЛЬ 1: ВЕРХНЯЯ РЕДАКЦИОННАЯ ПАНЕЛЬ (#topHeaderBar)
+       ========================================================================== */
+    .top-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 900;
+      display: flex;
+       justify-content: center;
+      padding: 12px clamp(12px, 3vw, 28px) 0;
+      pointer-events: none;
+      transition: transform 360ms var(--ease-out-expo), opacity 360ms var(--ease-out-expo);
+    }
+
+    .top-bar-inner {
+      pointer-events: auto;
+      width: 100%;
+      max-width: 1080px;
+      background: var(--bg-glass-dock);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      border: 1px solid var(--border-hairline);
+      border-radius: 14px;
+      padding: 8px 12px;
+      box-shadow: var(--shadow-hardware);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .brand-cluster {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-monogram {
+      height: 30px;
+      padding: 0 10px;
+      border-radius: 7px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hairline);
+      color: var(--accent-amber);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .brand-monogram-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-amber);
+      animation: idleLedPulse 2800ms ease-in-out infinite;
+    }
+
+    .doc-title-pill {
+      padding: 5px 10px;
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      max-width: 280px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    /* ==========================================================================
+       4. РЕЖИМ ФОКУСА (body.focus-mode)
+       ========================================================================== */
+    body.focus-mode .top-bar {
+      transform: translateY(-130%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    body.focus-mode .main-stage {
+      padding-top: 32px !important;
+    }
+
+    body.focus-mode .dock-wing-left,
+    body.focus-mode .dock-wing-right,
+    body.focus-mode .dock-scrub-meta {
+      display: none !important;
+    }
+
+    body.focus-mode .floating-dock {
+      max-width: 460px;
+    }
+
+    body.focus-mode .dock-console-row {
+      justify-content: center;
+    }
+
+    #btnExitFocusDock {
+      display: none;
+    }
+
+    body.focus-mode #btnExitFocusDock {
+      display: inline-flex;
+      border-color: var(--accent-amber);
+      color: var(--accent-amber);
+      background: var(--accent-glow);
+    }
+
+    /* ==========================================================================
+       5. МОДУЛЬ 2: ЦЕНТРАЛЬНАЯ СЦЕНА, ЛИСТ РУКОПИСИ И МАТРИЦА НУЛЕВОГО СОСТОЯНИЯ
+       ========================================================================== */
+    .main-stage {
+      width: 100%;
+      max-width: var(--sheet-max-width);
+      margin: 0 auto;
+      padding-top: var(--layout-top-pad);
+      padding-bottom: var(--layout-bottom-pad);
+      padding-left: clamp(12px, 3vw, 24px);
+      padding-right: clamp(12px, 3vw, 24px);
+      transition: padding-top 320ms var(--ease-out-expo);
+    }
+
+    .book-sheet {
+      position: relative;
+      background-color: var(--bg-sheet);
+      border: 1px solid var(--border-hairline);
+      border-radius: 18px;
+      padding: clamp(24px, 5vw, 56px);
+      box-shadow: var(--shadow-sheet);
+      overflow: hidden;
+      transition:
+        background-color 320ms var(--ease-out-expo),
+        border-color 220ms var(--ease-out-expo),
+        box-shadow 320ms var(--ease-out-expo);
+    }
+
+    /* Текстура хлопковой книжной бумаги через встроенный SVG feTurbulence */
+    .book-sheet::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      filter: url(#paper-grain);
+      opacity: 0.025;
+    }
+
+    .book-sheet > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .book-sheet.drag-over {
+      border-color: var(--accent-amber);
+      box-shadow: 0 0 0 2px var(--accent-amber), var(--shadow-sheet);
+    }
+
+    .book-header {
+      border-bottom: 1px solid var(--border-hairline);
+      padding-bottom: 20px;
+      margin-bottom: 28px;
+    }
+
+    .book-header-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .book-title {
+      font-family: var(--font-serif);
+      font-size: clamp(1.65rem, 2.8vw, 2.35rem);
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      line-height: 1.22;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .book-title.reveal-active {
+      animation: titleVerticalReveal 420ms var(--ease-out-expo) both;
+    }
+
+    @keyframes titleVerticalReveal {
+      0% {
+        clip-path: inset(0 0 100% 0);
+        transform: translateY(8px);
+      }
+      100% {
+        clip-path: inset(0 0 0% 0);
+        transform: translateY(0);
+      }
+    }
+
+    .book-meta-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .book-meta-pills {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border-radius: 6px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hairline);
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .meta-pill.engine-pill {
+      color: var(--accent-amber);
+      border-color: rgba(217, 155, 82, 0.24);
+      background: var(--accent-glow);
+    }
+
+    /* Матрица нулевого состояния рукописи (Zero-State Matrix) */
+    .zero-state-matrix {
+      border: 1px dashed rgba(217, 155, 82, 0.32);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.015) 0%, rgba(0, 0, 0, 0.08) 100%);
+      padding: clamp(28px, 5vw, 48px) clamp(20px, 4vw, 36px);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      transition: border-color 220ms var(--ease-out-expo), background-color 220ms var(--ease-out-expo);
+    }
+
+    .zero-state-matrix.drag-over {
+      border-color: var(--accent-amber);
+      background: var(--accent-glow);
+    }
+
+    .zero-state-icon-frame {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hairline);
+      color: var(--accent-amber);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 1px 0 var(--border-specular);
+    }
+
+    .zero-state-icon-frame svg {
+      width: 24px;
+      height: 24px;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      fill: none;
+    }
+
+    .zero-state-headline {
+      font-family: var(--font-serif);
+      font-size: clamp(1.15rem, 2vw, 1.42rem);
+      font-weight: 400;
+      line-height: 1.55;
+      color: var(--text-primary);
+      max-width: 46ch;
+      margin: 0;
+    }
+
+    .zero-state-subcopy {
+      font-size: 12px;
+      color: var(--text-secondary);
+      max-width: 52ch;
+      line-height: 1.6;
+      margin: -8px 0 0;
+    }
+
+    .zero-state-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .zero-state-specs {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-hairline);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* Текст рукописи и Оптический трекинг фокуса (Optical Focus Tracking) */
+    .reading-body {
+      font-family: var(--font-serif);
+      font-size: var(--reader-font-size, 21px);
+      line-height: var(--reader-line-height, 1.8);
+      color: var(--text-primary);
+      max-width: 64ch;
+      margin: 0 auto;
+      overflow-wrap: break-word;
+    }
+
+    .reading-paragraph {
+      margin: 0 0 1.25em 0;
+      opacity: 1;
+      transition: opacity 350ms var(--ease-out-expo);
+      animation: paraFadeUp 380ms var(--ease-out-expo) both;
+    }
+
+    @keyframes paraFadeUp {
+      0% {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* При активном воспроизведении неактивные абзацы приглушаются до 0.42 */
+    .reading-body.is-playing .reading-paragraph {
+      opacity: 0.42;
+    }
+
+    .reading-body.is-playing .reading-paragraph.active-paragraph {
+      opacity: 1;
+    }
+
+    .reading-body.is-playing .reading-paragraph:hover {
+      opacity: 0.92;
+    }
+
+    .sentence-node {
+      padding: 2px 5px;
+      margin: 0 -3px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition:
+        background-color 180ms var(--ease-tactile),
+        box-shadow 180ms var(--ease-tactile),
+        color 180ms var(--ease-tactile);
+    }
+
+    .sentence-node:hover {
+      background: var(--accent-glow);
+    }
+
+    .sentence-node.active {
+      background: var(--accent-glow);
+      box-shadow: -3px 0 0 0 var(--accent-amber);
+      color: var(--text-primary);
+    }
+
+    /* ==========================================================================
+       6. МОДУЛЬ 3: ДВУХДЕКОВЫЙ ПЛАВАЮЩИЙ ПУЛЬТ (#bottomDockWrapper)
+       ========================================================================== */
+    .floating-dock-wrapper {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 900;
+      padding: 0 clamp(10px, 2.5vw, 24px) calc(12px + env(safe-area-inset-bottom, 0px));
+      pointer-events: none;
+      display: flex;
+      justify-content: center;
+    }
+
+    .floating-dock {
+      pointer-events: auto;
+      width: 100%;
+      max-width: 1080px;
+      background: var(--bg-glass-dock);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      border: 1px solid var(--border-hairline);
+      border-radius: 16px;
+      box-shadow: var(--shadow-hardware);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: max-width 320ms var(--ease-out-expo);
+    }
+
+    /* Верхняя кромка: скраббинг-трек и табличные счетчики */
+    .dock-scrub-tier {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 14px 5px;
+      border-bottom: 1px solid var(--border-hairline);
+      background: rgba(0, 0, 0, 0.14);
+    }
+
+    .dock-counter {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      min-width: 66px;
+    }
+
+    .dock-counter.pct {
+      min-width: 38px;
+      text-align: right;
+      color: var(--accent-amber);
+    }
+
+    .dock-scrub-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      flex: 1;
+      height: 4px;
+      border-radius: 999px;
+      background: linear-gradient(
+        to right,
+        var(--accent-amber) 0%,
+        var(--accent-amber) var(--val-pct, 0%),
+        var(--bg-elevated) var(--val-pct, 0%),
+        var(--bg-elevated) 100%
+      );
+      cursor: pointer;
+      transition: height 180ms var(--ease-tactile);
+    }
+
+    .dock-scrub-slider:hover {
+      height: 8px;
+    }
+
+    .dock-scrub-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent-amber);
+      border: 2px solid var(--bg-sheet);
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+      transition: transform 180ms var(--ease-tactile);
+    }
+
+    .dock-scrub-slider:hover::-webkit-slider-thumb {
+      transform: scale(1.2);
+    }
+
+    /* Основной ряд консоли: Левое крыло (телеметрия) | Центр (транспорт) | Правое крыло (голос/скорость) */
+    .dock-console-row {
+      display: grid;
+      grid-template-columns: minmax(210px, 1.25fr) auto minmax(230px, 1.15fr);
+      align-items: center;
+      gap: 14px;
+      padding: 10px 14px 12px;
+    }
+
+    .dock-wing-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .telemetry-strip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .status-led {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      animation: idleLedPulse 2800ms ease-in-out infinite;
+    }
+
+    .status-badge.is-playing {
+      color: var(--status-live);
+    }
+
+    .status-badge.is-playing .status-led {
+      background: var(--status-live);
+      box-shadow: 0 0 8px var(--status-live);
+      animation: none;
+    }
+
+    .status-badge.is-paused {
+      color: var(--accent-amber);
+    }
+
+    .status-badge.is-paused .status-led {
+      background: var(--accent-amber);
+    }
+
+    @keyframes idleLedPulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1.0; }
+    }
+
+    /* Двухканальный аппаратный индикатор ДЕКА A / ДЕКА B */
+    .dual-deck-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hairline);
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+
+    .deck-slot {
+      padding: 1px 5px;
+      border-radius: 3px;
+      transition: background-color 180ms var(--ease-tactile), color 180ms var(--ease-tactile);
+    }
+
+    .deck-slot.active-deck {
+      background: var(--accent-glow);
+      color: var(--accent-amber);
+      font-weight: 600;
+    }
+
+    .deck-slot.standby-ready {
+      color: var(--status-live);
+    }
+
+    .status-sentence {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Центральное ядро транспорта */
+    .transport-core {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .btn-transport {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border-radius: 10px;
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: inset 0 1px 0 var(--border-specular);
+      transition:
+        background-color 180ms var(--ease-tactile),
+        border-color 180ms var(--ease-tactile),
+        transform 180ms var(--ease-tactile),
+        color 180ms var(--ease-tactile);
+    }
+
+    .btn-transport svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .btn-transport:hover {
+      border-color: var(--accent-amber);
+      background: var(--accent-glow);
+      color: var(--accent-amber);
+    }
+
+    .btn-transport:active {
+      transform: scale(0.95);
+    }
+
+    .btn-circle-main {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: var(--accent-amber);
+      color: #0B0C0E;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 24px rgba(217, 155, 82, 0.32);
+      transition: transform 180ms var(--ease-tactile), filter 180ms var(--ease-tactile), box-shadow 180ms var(--ease-tactile);
+    }
+
+    .btn-circle-main svg {
+      width: 20px;
+      height: 20px;
+      stroke: #0B0C0E;
+      stroke-width: 1.75;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .btn-circle-main:hover {
+      filter: brightness(1.07);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 10px 28px rgba(217, 155, 82, 0.45);
+    }
+
+    .btn-circle-main:active {
+      transform: scale(0.95);
+    }
+
+    /* Правое крыло: селекторы голоса и скорости */
+    .dock-wing-right {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .voice-select-wrap {
+      flex: 1;
+      min-width: 140px;
+      max-width: 260px;
+    }
+
+    .rate-select-wrap {
+      width: 82px;
+      flex-shrink: 0;
+    }
+
+    .rate-select-wrap .hardware-select {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+    }
+
+    /* ==========================================================================
+       7. МОДУЛИ 4 И 5: НЕБЛОКИРУЮЩИЕ МОДАЛЬНЫЕ ОКНА (#editorDrawer, #studioDrawer)
+       ========================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      background: var(--backdrop-overlay);
+      backdrop-filter: blur(20px) saturate(140%);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(12px, 3vw, 32px);
+      opacity: 1;
+      transition: opacity 320ms var(--ease-out-expo);
+    }
+
+    .modal-backdrop[hidden] {
+      display: none !important;
+    }
+
+    .modal-surface {
+      width: 100%;
+      max-width: 760px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      background: var(--bg-glass-dock);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      border: 1px solid var(--border-hairline);
+      border-radius: 18px;
+      padding: clamp(18px, 3.5vw, 28px);
+      box-shadow: var(--shadow-hardware);
+      transform: translateY(0);
+      animation: drawerSlideIn 340ms var(--ease-out-expo) both;
+    }
+
+    @keyframes drawerSlideIn {
+      0% {
+        opacity: 0;
+        transform: translateY(18px) scale(0.985);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--border-hairline);
+    }
+
+    .modal-title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .modal-title {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .editor-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .editor-title-input {
+      flex: 1;
+      min-width: 180px;
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 9px;
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .editor-dropzone-bar {
+      border: 1px dashed rgba(217, 155, 82, 0.3);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      background: rgba(255, 255, 255, 0.015);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--text-secondary);
+      transition: border-color 180ms var(--ease-tactile), background-color 180ms var(--ease-tactile);
+    }
+
+    .editor-dropzone-bar.drag-over {
+      border-color: var(--accent-amber);
+      background: var(--accent-glow);
+      color: var(--text-primary);
+    }
+
+    .editor-textarea {
+      width: 100%;
+      min-height: 250px;
+      background: var(--bg-canvas);
+      color: var(--text-primary);
+      border: 1px solid var(--border-hairline);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-family: var(--font-serif);
+      font-size: 17px;
+      line-height: 1.65;
+      resize: vertical;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+
+    .editor-textarea:focus {
+      outline: none;
+      border-color: var(--accent-amber);
+    }
+
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-hairline);
+    }
+
+    /* Сетка акустической калибровки и типографики (#studioDrawer) */
+    .studio-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .studio-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hairline);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: inset 0 1px 0 var(--border-specular);
+    }
+
+    .studio-control-row {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .studio-label-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .studio-val-readout {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-amber);
+    }
+
+    /* 4-полосный анимированный эквалайзер для пробы голоса */
+    .eq-bars {
+      display: none;
+      align-items: flex-end;
+      gap: 2px;
+      height: 13px;
+    }
+
+    .btn.is-previewing .eq-bars {
+      display: inline-flex;
+    }
+
+    .eq-bar {
+      width: 2.5px;
+      background: currentColor;
+      border-radius: 1px;
+      animation: eqBounce 640ms ease-in-out infinite alternate;
+    }
+
+    .eq-bar:nth-child(1) { height: 5px; animation-delay: 0ms; }
+    .eq-bar:nth-child(2) { height: 12px; animation-delay: 140ms; }
+    .eq-bar:nth-child(3) { height: 7px; animation-delay: 280ms; }
+    .eq-bar:nth-child(4) { height: 10px; animation-delay: 90ms; }
+
+    @keyframes eqBounce {
+      0% { transform: scaleY(0.35); }
+      100% { transform: scaleY(1); }
+    }
+
+    /* Тактильный тумблер автопрокрутки */
+    .tactile-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-top: 1px solid var(--border-hairline);
+      border-bottom: 1px solid var(--border-hairline);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .tactile-switch {
+      position: relative;
+      width: 42px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .tactile-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .tactile-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-hairline);
+      transition: background-color 220ms var(--ease-tactile), border-color 220ms var(--ease-tactile);
+    }
+
+    .tactile-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      transition: transform 220ms var(--ease-tactile), background-color 220ms var(--ease-tactile);
+    }
+
+    .tactile-switch input:checked + .tactile-track {
+      background: var(--accent-glow);
+      border-color: var(--accent-amber);
+    }
+
+    .tactile-switch input:checked + .tactile-track .tactile-thumb {
+      transform: translateX(18px);
+      background: var(--accent-amber);
+    }
+
+    .sleep-pills-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    /* ==========================================================================
+       8. МОДУЛЬ 6: КАРМАННЫЙ ЭКРАН БЛОКИРОВКИ ZERO-LUX OLED (#oledOverlay)
+       ========================================================================== */
+    .oled-saver {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #000000;
+      color: #8A8680;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .oled-saver[hidden] {
+      display: none !important;
+    }
+
+    .oled-frame {
+      width: 100%;
+      max-width: 480px;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      border-radius: 22px;
+      padding: 28px 22px;
+      background: #040404;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .oled-phrase-readout {
+      font-family: var(--font-serif);
+      font-size: 16px;
+      line-height: 1.6;
+      color: rgba(217, 155, 82, 0.78);
+      min-height: 76px;
+      max-width: 40ch;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .oled-transport-row {
+      display: grid;
+      grid-template-columns: 1fr 1.35fr 1fr;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .btn-oled-wireframe {
+      min-height: 60px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: #08080A;
+      color: #D8D4CD;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 180ms var(--ease-tactile), border-color 180ms var(--ease-tactile);
+    }
+
+    .btn-oled-wireframe svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      fill: none;
+    }
+
+    .btn-oled-wireframe.primary-wire {
+      border-color: rgba(217, 155, 82, 0.55);
+      color: #D99B52;
+    }
+
+    .btn-oled-wireframe:active {
+      transform: scale(0.95);
+    }
+
+    /* Кнопка удержания 900 мс с прогресс-кольцом SVG */
+    .btn-hold-unlock {
+      position: relative;
+      width: 100%;
+      min-height: 52px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: #08080A;
+      color: #9A9690;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      overflow: hidden;
+      transition: border-color 180ms var(--ease-tactile), color 180ms var(--ease-tactile);
+    }
+
+    .btn-hold-unlock.is-holding {
+      border-color: var(--accent-amber);
+      color: var(--accent-amber);
+    }
+
+    .hold-ring-svg {
+      width: 24px;
+      height: 24px;
+      transform: rotate(-90deg);
+      flex-shrink: 0;
+    }
+
+    .hold-ring-track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.12);
+      stroke-width: 2.5;
+    }
+
+    .hold-ring-progress {
+      fill: none;
+      stroke: var(--accent-amber);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      transition: stroke-dashoffset 120ms linear;
+    }
+
+    .btn-hold-unlock.is-holding .hold-ring-progress {
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 900ms linear;
+    }
+
+    /* ==========================================================================
+       9. АДАПТИВНОСТЬ (360px — 4K) И ДОСТУПНОСТЬ ДВИЖЕНИЯ
+       ========================================================================== */
+    @media (max-width: 820px) {
+      .dock-console-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .dock-wing-left {
+        align-items: center;
+        text-align: center;
+      }
+      .dock-wing-right {
+        justify-content: stretch;
+      }
+      .voice-select-wrap {
+        max-width: none;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .doc-title-pill {
+        display: none;
+      }
+      .top-bar-inner {
+        padding: 7px 10px;
+      }
+      .btn {
+        padding: 5px 9px;
+        min-height: 34px;
+        font-size: 12px;
+      }
+      .modal-backdrop {
+        align-items: flex-end;
+        padding: 0;
+      }
+      .modal-surface {
+        max-width: 100%;
+        border-radius: 20px 20px 0 0;
+        max-height: 88vh;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      .btn-hold-unlock.is-holding .hold-ring-progress {
+        transition: stroke-dashoffset 900ms linear !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       0. ВСТРОЕННЫЙ SVG-СЕЙФ: ФИЛЬТР БУМАЖНОГО ЗЕРНА И ВЕКТОРНЫЕ ИКОНКИ (1.5px)
+       ======================================================================== -->
+  <svg class="svg-defs-vault" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- Текстура хлопковой бумаги для .book-sheet -->
+      <filter id="paper-grain" x="0%" y="0%" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" result="noise" />
+        <feColorMatrix type="saturate" values="0" in="noise" result="desaturatedNoise" />
+        <feComponentTransfer in="desaturatedNoise" result="grain">
+          <feFuncA type="linear" slope="0.65" />
+        </feComponentTransfer>
+      </filter>
+
+      <!-- Иконки интерфейса (строго 1.5px stroke, round caps/joins) -->
+      <symbol id="ico-manuscript" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="8" y1="13" x2="16" y2="13"></line>
+        <line x1="8" y1="17" x2="13" y2="17"></line>
+      </symbol>
+
+      <symbol id="ico-clear" viewBox="0 0 24 24">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+        <path d="M10 11v6"></path>
+        <path d="M14 11v6"></path>
+        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+      </symbol>
+
+      <symbol id="ico-sliders" viewBox="0 0 24 24">
+        <line x1="4" y1="21" x2="4" y2="14"></line>
+        <line x1="4" y1="10" x2="4" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12" y2="3"></line>
+        <line x1="20" y1="21" x2="20" y2="16"></line>
+        <line x1="20" y1="12" x2="20" y2="3"></line>
+        <line x1="1" y1="14" x2="7" y2="14"></line>
+        <line x1="9" y1="8" x2="15" y2="8"></line>
+        <line x1="17" y1="16" x2="23" y2="16"></line>
+      </symbol>
+
+      <symbol id="ico-focus" viewBox="0 0 24 24">
+        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </symbol>
+
+      <symbol id="ico-theme" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4"></circle>
+        <path d="M12 2v2"></path>
+        <path d="M12 20v2"></path>
+        <path d="M4.93 4.93l1.41 1.41"></path>
+        <path d="M17.66 17.66l1.41 1.41"></path>
+        <path d="M2 12h2"></path>
+        <path d="M20 12h2"></path>
+        <path d="M6.34 17.66l-1.41 1.41"></path>
+        <path d="M19.07 4.93l-1.41 1.41"></path>
+      </symbol>
+
+      <symbol id="ico-clipboard" viewBox="0 0 24 24">
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+      </symbol>
+
+      <symbol id="ico-upload" viewBox="0 0 24 24">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="17 8 12 3 7 8"></polyline>
+        <line x1="12" y1="3" x2="12" y2="15"></line>
+      </symbol>
+
+      <symbol id="ico-play" viewBox="0 0 24 24">
+        <polygon points="6 4 20 12 6 20 6 4"></polygon>
+      </symbol>
+
+      <symbol id="ico-pause" viewBox="0 0 24 24">
+        <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+        <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+      </symbol>
+
+      <symbol id="ico-prev" viewBox="0 0 24 24">
+        <polygon points="19 20 9 12 19 4 19 20"></polygon>
+        <line x1="5" y1="19" x2="5" y2="5"></line>
+      </symbol>
+
+      <symbol id="ico-next" viewBox="0 0 24 24">
+        <polygon points="5 4 15 12 5 20 5 4"></polygon>
+        <line x1="19" y1="5" x2="19" y2="19"></line>
+      </symbol>
+
+      <symbol id="ico-stop" viewBox="0 0 24 24">
+        <rect x="6" y="6" width="12" height="12" rx="1.5"></rect>
+      </symbol>
+
+      <symbol id="ico-oled" viewBox="0 0 24 24">
+        <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+        <line x1="12" y1="18" x2="12.01" y2="18"></line>
+      </symbol>
+
+      <symbol id="ico-close" viewBox="0 0 24 24">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </symbol>
+
+      <symbol id="ico-chevron-down" viewBox="0 0 24 24">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </symbol>
+
+      <symbol id="ico-wave" viewBox="0 0 24 24">
+        <path d="M2 12h2"></path>
+        <path d="M6 8v8"></path>
+        <path d="M10 4v16"></path>
+        <path d="M14 7v10"></path>
+        <path d="M18 9v6"></path>
+        <path d="M22 12h-2"></path>
+      </symbol>
+
+      <symbol id="ico-lock" viewBox="0 0 24 24">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- ТРИ ИЗОЛИРОВАННЫХ АУДИОКАНАЛА: ДВУХДЕКОВЫЙ PING-PONG (A/B) + КАНАЛ ПРОБЫ ГОЛОСА[cite: 1] -->
+  <audio id="neuralAudioA" referrerpolicy="no-referrer" preload="auto" playsinline></audio>
+  <audio id="neuralAudioB" referrerpolicy="no-referrer" preload="auto" playsinline></audio>
+  <audio id="previewAudio" referrerpolicy="no-referrer" preload="auto" playsinline></audio>
+
+  <!-- ========================================================================
+       1. ВЕРХНЯЯ РЕДАКЦИОННАЯ ПАНЕЛЬ (Floating Editorial Header Bar)[cite: 1]
+       ======================================================================== -->
+  <header class="top-bar" id="topHeaderBar">
+    <div class="top-bar-inner">
+      <div class="brand-cluster">
+        <div class="brand-monogram" title="Аудиофильская нейростудия чтения AURA READER">
+          <span class="brand-monogram-dot"></span>
+          <span>AURA</span>
+        </div>
+        <div class="doc-title-pill" id="headerDocPill">Ожидание рукописи</div>
+      </div>
+
+      <nav class="top-actions" aria-label="Инструменты студии">
+        <button type="button" class="btn" id="btnToggleEditor" onclick="window.AuraApp.toggleEditor()" title="Открыть редактор рукописи или импортировать файл">
+          <svg><use href="#ico-manuscript"></use></svg>
+          <span>Рукопись</span>
+        </button>
+
+        <button type="button" class="btn danger-subtle" id="btnClearTop" onclick="window.AuraApp.clearAllText()" title="Двухшаговый сброс текущей рукописи">
+          <svg><use href="#ico-clear"></use></svg>
+          <span id="lblClearTop">Очистить</span>
+        </button>
+
+        <button type="button" class="btn" id="btnToggleStudio" onclick="window.AuraApp.toggleStudio()" title="Калибровка тембра, среза тишины, шрифта и таймера сна">
+          <svg><use href="#ico-sliders"></use></svg>
+          <span>Акустика и шрифт</span>
+        </button>
+
+        <button type="button" class="btn" id="btnToggleFocus" onclick="window.AuraApp.toggleFocus()" title="Режим глубокого чтения без периферийных панелей">
+          <svg><use href="#ico-focus"></use></svg>
+          <span>Фокус</span>
+        </button>
+
+        <button type="button" class="btn" id="btnCycleTheme" onclick="window.AuraApp.cycleTheme()" title="Переключить световую среду: Тёмная, Светлая, OLED">
+          <svg><use href="#ico-theme"></use></svg>
+          <span id="lblCycleTheme">Свет: Тёмная</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       2. ЦЕНТРАЛЬНАЯ СЦЕНА: ЛИСТ РУКОПИСИ И МАТРИЦА НУЛЕВОГО СОСТОЯНИЯ
+       ======================================================================== -->
+  <main class="main-stage" id="mainStage">
+    <article class="book-sheet" id="bookSheet" aria-live="polite">
+      <header class="book-header">
+        <div class="book-header-top">
+          <div>
+            <div class="section-eyebrow" style="margin-bottom: 6px;">Редакционный лист · Двухдековый тракт</div>
+            <h1 class="book-title" id="bookTitleHeading">Рукопись не загружена</h1>
+          </div>
+
+          <button type="button" class="btn" id="btnPlayFromSelected" onclick="window.AuraApp.togglePlay()" title="Запустить озвучивание с выбранного абзаца">
+            <svg><use href="#ico-play"></use></svg>
+            <span>Запустить озвучивание с выбранного абзаца</span>
+          </button>
+        </div>
+
+        <div class="book-meta-bar">
+          <div class="book-meta-pills">
+            <span class="meta-pill" id="metaSentences">Фраз: 0</span>
+            <span class="meta-pill" id="metaWords">Слов: ~0</span>
+            <span class="meta-pill" id="metaTime">Звучание: ~0 мин</span>
+          </div>
+          <span class="meta-pill engine-pill" id="metaEngineBadge">PING-PONG БУФЕР · СРЕЗ СТЫКА 140 МС</span>
+        </div>
+      </header>
+
+      <!-- Матрица нулевого состояния (отображается, когда segments.length === 0) -->
+      <section id="zeroStateMatrix" class="zero-state-matrix">
+        <div class="zero-state-icon-frame">
+          <svg><use href="#ico-manuscript"></use></svg>
+        </div>
+
+        <p class="zero-state-headline">
+          Лист ожидает рукопись. Вставьте текст из буфера обмена или перетащите файл на страницу.
+        </p>
+
+        <p class="zero-state-subcopy">
+          Двухдековый тракт автоматически разбивает абзацы на сбалансированные речевые сегменты, предзагружает следующую фразу в резервный канал и срезает тишину на стыках.
+        </p>
+
+        <div class="zero-state-actions">
+          <button type="button" class="btn primary" id="btnZeroPasteRead" onclick="window.AuraApp.pasteFromClipboardAndRead()">
+            <svg><use href="#ico-clipboard"></use></svg>
+            <span>Вставить из буфера и читать</span>
+          </button>
+
+          <button type="button" class="btn" onclick="document.getElementById('fileImportInput').click()">
+            <svg><use href="#ico-upload"></use></svg>
+            <span>Выбрать файл (.txt, .md, .html)</span>
+          </button>
+
+          <button type="button" class="btn" onclick="window.AuraApp.toggleEditor(true)">
+            <svg><use href="#ico-manuscript"></use></svg>
+            <span>Открыть редактор рукописи</span>
+          </button>
+        </div>
+
+        <div class="zero-state-specs">
+          <span>ФОРМАТЫ: TXT · MD · HTML · HTM</span>
+          <span>БУФЕР: ДВЕ ДЕКИ (A / B)</span>
+          <span>ХРАНИЛИЩЕ: LOCALSTORAGE V3</span>
+        </div>
+      </section>
+
+      <!-- Контейнер интерактивных абзацев (.reading-paragraph) и фраз (.sentence-node)[cite: 1] -->
+      <div id="bookReadingContainer" class="reading-body" hidden></div>
+    </article>
+  </main>
+
+  <!-- ========================================================================
+       3. ДВУХДЕКОВЫЙ ПЛАВАЮЩИЙ ПУЛЬТ (Dual-Deck Ping-Pong Floating Console)
+       ======================================================================== -->
+  <div class="floating-dock-wrapper" id="bottomDockWrapper">
+    <footer class="floating-dock" aria-label="Пульт управления воспроизведением">
+
+      <!-- Верхний ярус: полноширинный скраббинг-трек и табличные счетчики -->
+      <div class="dock-scrub-tier">
+        <span class="dock-counter mono-tabular" id="lblProgressCounter">00 / 00</span>
+        <input
+          type="range"
+          id="dockProgressSlider"
+          class="dock-scrub-slider"
+          min="0"
+          max="0"
+          value="0"
+          step="1"
+          style="--val-pct: 0%;"
+          aria-label="Позиция по фразам рукописи"
+          oninput="window.AuraApp.seekToIndex(this.value)"
+        />
+        <span class="dock-counter pct mono-tabular" id="lblProgressPercent">0%</span>
+      </div>
+
+      <!-- Основной ярус консоли -->
+      <div class="dock-console-row">
+
+        <!-- Левое крыло: статус, двухдековая телеметрия (ДЕКА A / ДЕКА B) и бегущая строка фразы -->
+        <div class="dock-wing-left">
+          <div class="telemetry-strip">
+            <span class="status-badge" id="lblStateBadge">
+              <span class="status-led"></span>
+              <span id="lblStateText">ДЕКА A · ОЖИДАНИЕ · СРЕЗ СТЫКА 140 МС</span>
+            </span>
+
+            <span class="dual-deck-indicator" title="Индикатор активной и резервной аудиодеки">
+              <span class="deck-slot active-deck" id="deckSlotA">ДЕКА A</span>
+              <span>/</span>
+              <span class="deck-slot" id="deckSlotB">ДЕКА B</span>
+            </span>
+          </div>
+
+          <div class="status-sentence" id="lblCurrentSentence">
+            Загрузите рукопись или вставьте текст из буфера обмена для начала чтения
+          </div>
+        </div>
+
+        <!-- Центральное ядро: тактильные транспортные клавиши -->
+        <div class="transport-core">
+          <button type="button" class="btn-transport" onclick="window.AuraApp.prev()" title="Предыдущая фраза (Стрелка влево)" aria-label="Пред.">
+            <svg><use href="#ico-prev"></use></svg>
+          </button>
+
+          <button type="button" class="btn-circle-main" id="btnMainPlay" onclick="window.AuraApp.togglePlay()" title="Запустить озвучивание с выбранного абзаца (Пробел)" aria-label="Старт или Пауза">
+            <svg id="icoMainPlaySvg"><use href="#ico-play"></use></svg>
+          </button>
+
+          <button type="button" class="btn-transport" onclick="window.AuraApp.next()" title="Следующая фраза (Стрелка вправо)" aria-label="След.">
+            <svg><use href="#ico-next"></use></svg>
+          </button>
+
+          <button type="button" class="btn-transport" onclick="window.AuraApp.stop()" title="Остановить воспроизведение" aria-label="Стоп">
+            <svg><use href="#ico-stop"></use></svg>
+          </button>
+
+          <button type="button" class="btn-transport" onclick="window.AuraApp.toggleOled(true)" title="Карманный экран OLED с защитой от нажатий" aria-label="Карманный OLED">
+            <svg><use href="#ico-oled"></use></svg>
+          </button>
+
+          <button type="button" class="btn" id="btnExitFocusDock" onclick="window.AuraApp.toggleFocus()" title="Выйти из режима фокуса (Escape)">
+            <svg><use href="#ico-close"></use></svg>
+            <span>Выход из фокуса</span>
+          </button>
+        </div>
+
+        <!-- Правое крыло: аппаратные селекторы голоса и скорости -->
+        <div class="dock-wing-right">
+          <div class="select-shell voice-select-wrap">
+            <select id="selectVoiceEngine" class="hardware-select" title="Выбор голосового тракта" onchange="window.AuraApp.onVoiceChange(this.value)">
+              <option value="edge_svetlana" selected>Светлана Neural (Мягкий женский · Мост)</option>
+              <option value="edge_dmitry">Дмитрий Neural (Глубокий мужской · Мост)</option>
+              <option value="edge_dariya">Дария Neural (Ясный женский · Мост)</option>
+              <option value="polly_tatyana">Татьяна (Спокойный женский поток)</option>
+              <option value="polly_maxim">Максим (Чёткий мужской поток)</option>
+              <option value="google_ru">Классический женский MP3 (Google Stream)</option>
+            </select>
+            <svg class="select-chevron"><use href="#ico-chevron-down"></use></svg>
+          </div>
+
+          <div class="select-shell rate-select-wrap">
+            <select id="selectRate" class="hardware-select" title="Скорость чтения" onchange="window.AuraApp.setRate(this.value)">
+              <option value="0.80">0.80x</option>
+              <option value="0.90">0.90x</option>
+              <option value="0.95" selected>0.95x</option>
+              <option value="1.00">1.00x</option>
+              <option value="1.10">1.10x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.50">1.50x</option>
+            </select>
+            <svg class="select-chevron"><use href="#ico-chevron-down"></use></svg>
+          </div>
+        </div>
+
+      </div>
+    </footer>
+  </div>
+
+  <!-- ========================================================================
+       4. МОДАЛЬНЫЙ РЕДАКТОР РУКОПИСИ И ИМПОРТА ФАЙЛОВ (#editorDrawer)
+       ======================================================================== -->
+  <div id="editorDrawer" class="modal-backdrop" onclick="if(event.target === this) window.AuraApp.toggleEditor(false)" hidden>
+    <section class="modal-surface" role="dialog" aria-modal="true" aria-labelledby="editorModalTitle">
+      <header class="modal-header">
+        <div class="modal-title-group">
+          <span class="section-eyebrow">Буфер рукописи · Локальное хранилище</span>
+          <h2 class="modal-title" id="editorModalTitle">Редактор рукописи и импорт файлов</h2>
+        </div>
+        <button type="button" class="btn" onclick="window.AuraApp.toggleEditor(false)">
+          <svg><use href="#ico-close"></use></svg>
+          <span>Закрыть</span>
+        </button>
+      </header>
+
+      <div class="editor-toolbar">
+        <input type="file" id="fileImportInput" accept=".txt,.md,.html,.htm" style="display:none" onchange="window.AuraApp.importTextFile(event)" />
+
+        <button type="button" class="btn primary" onclick="document.getElementById('fileImportInput').click()">
+          <svg><use href="#ico-upload"></use></svg>
+          <span>Импорт файла (.txt, .md, .html)</span>
+        </button>
+
+        <button type="button" class="btn" onclick="window.AuraApp.pasteIntoEditorArea()">
+          <svg><use href="#ico-clipboard"></use></svg>
+          <span>Вставить из буфера</span>
+        </button>
+
+        <button type="button" class="btn danger-subtle" id="btnClearEditor" onclick="window.AuraApp.clearEditorArea()">
+          <svg><use href="#ico-clear"></use></svg>
+          <span>Очистить поле</span>
+        </button>
+
+        <input type="text" id="editDocTitle" class="editor-title-input" placeholder="Заголовок рукописи..." />
+      </div>
+
+      <div id="editorDropZone" class="editor-dropzone-bar">
+        <span>Перетащите файл .txt, .md или .html в эту область для автоматической очистки разметки</span>
+        <span class="mono-tabular" id="editorLiveStats">0 слов · 0 сегментов</span>
+      </div>
+
+      <textarea
+        id="editorTextarea"
+        class="editor-textarea"
+        placeholder="Лист ожидает рукопись. Вставьте текст из буфера обмена или перетащите файл на страницу."
+      ></textarea>
+
+      <footer class="modal-footer">
+        <span style="font-size: 12px; color: var(--text-secondary);">
+          Автосохранение каждые 350 мс в локальную память браузера
+        </span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn" onclick="window.AuraApp.saveEditorText(false)">
+            <span>Только сохранить</span>
+          </button>
+          <button type="button" class="btn primary" onclick="window.AuraApp.saveEditorText(true)">
+            <svg><use href="#ico-play"></use></svg>
+            <span>Применить и слушать</span>
+          </button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <!-- ========================================================================
+       5. СТУДИЙНАЯ КАЛИБРОВКА АКУСТИКИ И ТИПОГРАФИКИ (#studioDrawer)
+       ======================================================================== -->
+  <div id="studioDrawer" class="modal-backdrop" onclick="if(event.target === this) window.AuraApp.toggleStudio(false)" hidden>
+    <section class="modal-surface" role="dialog" aria-modal="true" aria-labelledby="studioModalTitle">
+      <header class="modal-header">
+        <div class="modal-title-group">
+          <span class="section-eyebrow">Калибровка тракта · Оптический комфорт</span>
+          <h2 class="modal-title" id="studioModalTitle">Акустика, срез тишины и типографика</h2>
+        </div>
+        <button type="button" class="btn" onclick="window.AuraApp.toggleStudio(false)">
+          <svg><use href="#ico-close"></use></svg>
+          <span>Закрыть</span>
+        </button>
+      </header>
+
+      <div class="studio-grid">
+
+        <!-- Карта 1: Акустика и срез стыков -->
+        <div class="studio-card">
+          <div class="section-eyebrow">Акустический тракт и стыки</div>
+
+          <div class="studio-control-row">
+            <div class="studio-label-line">
+              <span>Высота тона (Тембр)</span>
+              <span class="studio-val-readout" id="lblPitch">1.00</span>
+            </div>
+            <input
+              type="range"
+              class="range-slider"
+              id="rangePitch"
+              min="0.70"
+              max="1.30"
+              step="0.05"
+              value="1.00"
+              style="--val-pct: 50%;"
+              oninput="window.AuraApp.setPitch(this.value)"
+            />
+          </div>
+
+          <div class="studio-control-row">
+            <div class="studio-label-line">
+              <span>Уровень громкости</span>
+              <span class="studio-val-readout" id="lblVolume">100%</span>
+            </div>
+            <input
+              type="range"
+              class="range-slider"
+              id="rangeVolume"
+              min="0.10"
+              max="1.00"
+              step="0.05"
+              value="1.00"
+              style="--val-pct: 100%;"
+              oninput="window.AuraApp.setVolume(this.value)"
+            />
+          </div>
+
+          <div class="studio-control-row">
+            <div class="studio-label-line">
+              <span>Срез пустой тишины на стыках</span>
+              <span class="studio-val-readout" id="lblTrimOverlap">140 мс</span>
+            </div>
+            <input
+              type="range"
+              class="range-slider"
+              id="rangeTrimOverlap"
+              min="0"
+              max="280"
+              step="20"
+              value="140"
+              style="--val-pct: 50%;"
+              oninput="window.AuraApp.setTrimOverlap(this.value)"
+            />
+          </div>
+
+          <div class="studio-control-row">
+            <label class="studio-label-line" for="rangeBlockSize">
+              <span>Размер блока загрузки</span>
+              <span class="studio-val-readout" id="lblBlockSize">1 предложение</span>
+            </label>
+            <input type="range" class="range-slider" id="rangeBlockSize"
+              min="1" max="20" step="1" value="1" style="--val-pct: 0%;"
+              aria-describedby="blockSizeHelp" oninput="window.AuraApp.setBlockSize(this.value)" />
+            <p id="blockSizeHelp" class="pause-help">Больше предложений — больше запас загруженного аудио.</p>
+            <p class="pause-help">Автоподключение включено: при временном сбое — до 8 повторов с растущей задержкой, без смены голоса. При отсутствии сети — ожидание и автоматическая проверка подключения. «Пауза» и «Стоп» отменяют автоматическое продолжение.</p>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 4px;">
+            <button type="button" class="btn primary" id="btnPreviewVoice" style="flex: 1;" onclick="window.AuraApp.previewSelectedVoice()">
+              <svg><use href="#ico-wave"></use></svg>
+              <span>Прослушать пробу голоса</span>
+              <span class="eq-bars" aria-hidden="true">
+                <span class="eq-bar"></span>
+                <span class="eq-bar"></span>
+                <span class="eq-bar"></span>
+                <span class="eq-bar"></span>
+              </span>
+            </button>
+
+            <button type="button" class="btn" id="btnStopPreview" onclick="window.AuraApp.stopPreview()" title="Остановить пробу голоса">
+              <svg><use href="#ico-stop"></use></svg>
+            </button>
+          </div>
+
+          <div id="previewStatusText" class="mono-tabular" style="font-size: 11px; color: var(--text-secondary); min-height: 16px;">
+            Изолированный канал пробы готов к тесту
+          </div>
+        </div>
+
+        <!-- Карта 2: Типографика и таймер сна -->
+        <div class="studio-card">
+          <div class="section-eyebrow">Типографика листа и таймер сна</div>
+
+          <div class="studio-control-row">
+            <div class="studio-label-line">
+              <span>Кегль наборного шрифта</span>
+              <span class="studio-val-readout" id="lblFontSize">21px</span>
+            </div>
+            <input
+              type="range"
+              class="range-slider"
+              id="rangeFontSize"
+              min="16"
+              max="28"
+              step="1"
+              value="21"
+              style="--val-pct: 41.6%;"
+              oninput="window.AuraApp.setFontSize(this.value)"
+            />
+          </div>
+
+          <label class="tactile-toggle-row" for="chkAutoScroll">
+            <div>
+              <div style="font-size: 13px; color: var(--text-primary); font-weight: 500;">Оптическое ведение строки</div>
+              <div style="font-size: 11px; color: var(--text-secondary);">Плавная центровка активного абзаца при чтении</div>
+            </div>
+            <span class="tactile-switch">
+              <input type="checkbox" id="chkAutoScroll" checked onchange="window.AuraApp.setAutoScroll(this.checked)" />
+              <span class="tactile-track">
+                <span class="tactile-thumb"></span>
+              </span>
+            </span>
+          </label>
+
+          <div class="studio-control-row">
+            <div class="studio-label-line">
+              <span>Таймер автоматической паузы</span>
+              <span class="studio-val-readout" id="lblSleepTimer">Выкл</span>
+            </div>
+            <div class="sleep-pills-grid">
+              <button type="button" class="btn sleep-pill active" data-sleep="0" onclick="window.AuraApp.setSleepTimer(0)">Выкл</button>
+              <button type="button" class="btn sleep-pill" data-sleep="15" onclick="window.AuraApp.setSleepTimer(15)">15 м</button>
+              <button type="button" class="btn sleep-pill" data-sleep="30" onclick="window.AuraApp.setSleepTimer(30)">30 м</button>
+              <button type="button" class="btn sleep-pill" data-sleep="60" onclick="window.AuraApp.setSleepTimer(60)">60 м</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- ========================================================================
+       6. КАРМАННЫЙ ЭКРАН БЛОКИРОВКИ ZERO-LUX OLED (#oledOverlay)
+       Строгий запрет разблокировки по клику на фон; выход только удержанием 900 мс или Escape
+       ======================================================================== -->
+  <div id="oledOverlay" class="oled-saver" hidden>
+    <div class="oled-frame">
+      <div class="section-eyebrow" style="color: #737373; display: inline-flex; align-items: center; gap: 6px;">
+        <svg style="width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.5; fill: none;"><use href="#ico-lock"></use></svg>
+        <span>КАРМАННЫЙ РЕЖИМ ZERO-LUX OLED</span>
+      </div>
+
+      <div id="oledCurrentPhrase" class="oled-phrase-readout">
+        Нажмите Старт для озвучивания текущей фразы
+      </div>
+
+      <div class="oled-transport-row">
+        <button type="button" class="btn-oled-wireframe" onclick="window.AuraApp.prev()">
+          <svg><use href="#ico-prev"></use></svg>
+          <span>Предыдущая</span>
+        </button>
+
+        <button type="button" class="btn-oled-wireframe primary-wire" id="oledPlayBtn" onclick="window.AuraApp.togglePlay()">
+          <svg id="icoOledPlaySvg"><use href="#ico-play"></use></svg>
+          <span id="lblOledPlayText">Старт / Пауза</span>
+        </button>
+
+        <button type="button" class="btn-oled-wireframe" onclick="window.AuraApp.next()">
+          <svg><use href="#ico-next"></use></svg>
+          <span>Следующая</span>
+        </button>
+      </div>
+
+      <button type="button" class="btn-hold-unlock" id="btnHoldUnlock">
+        <svg class="hold-ring-svg" viewBox="0 0 36 36" aria-hidden="true">
+          <circle class="hold-ring-track" cx="18" cy="18" r="15.9155"></circle>
+          <circle class="hold-ring-progress" id="oledHoldRingPath" cx="18" cy="18" r="15.9155"></circle>
+        </svg>
+        <span id="lblHoldUnlockText">Удерживайте 1 сек для разблокировки</span>
+      </button>
+    </div>
+  </div>
+<!-- ========================================================================
+       ЯДРО ПРИЛОЖЕНИЯ: SMART NEURAL BRIDGE, ПАРСЕР И ДВУХДЕКОВЫЙ PING-PONG ДВИЖОК
+       ======================================================================== -->
+  <script>
+    (function () {
+      "use strict";
+
+      /* ----------------------------------------------------------------------
+         0. ГЕОМЕТРИЯ ХОЛСТА (RESIZEOBSERVER) И ЗАПОЛНЕНИЕ ТРЕКОВ (--val-pct)
+         ---------------------------------------------------------------------- */
+      function updateLayoutOffsets() {
+        const header = document.getElementById("topHeaderBar");
+        const dock = document.getElementById("bottomDockWrapper");
+        if (header) {
+          document.documentElement.style.setProperty("--layout-top-pad", (header.offsetHeight + 24) + "px");
+        }
+        if (dock) {
+          document.documentElement.style.setProperty("--layout-bottom-pad", (dock.offsetHeight + 36) + "px");
+        }
+      }
+
+      function updateSliderFill(sliderEl) {
+        if (!sliderEl) return;
+        const min = parseFloat(sliderEl.min) || 0;
+        const max = parseFloat(sliderEl.max) || 100;
+        const val = parseFloat(sliderEl.value) || 0;
+        const pct = max > min ? ((val - min) / (max - min)) * 100 : 0;
+        sliderEl.style.setProperty("--val-pct", Math.max(0, Math.min(100, pct)).toFixed(1) + "%");
+      }
+
+      window.addEventListener("resize", updateLayoutOffsets);
+      window.addEventListener("orientationchange", () => setTimeout(updateLayoutOffsets, 150));
+      if ("ResizeObserver" in window) {
+        const ro = new ResizeObserver(updateLayoutOffsets);
+        const hEl = document.getElementById("topHeaderBar");
+        const dEl = document.getElementById("bottomDockWrapper");
+        if (hEl) ro.observe(hEl);
+        if (dEl) ro.observe(dEl);
+      }
+      setTimeout(updateLayoutOffsets, 50);
+
+      /* ----------------------------------------------------------------------
+         1. АВТОНОМНЫЙ SHA-256 (ДЛЯ РАБОТЫ ДАЖЕ С FILE:// ПРОТОКОЛА)
+         ---------------------------------------------------------------------- */
+      function sha256Ascii(ascii) {
+        function rightRotate(value, amount) {
+          return (value >>> amount) | (value << (32 - amount));
+        }
+        const mathPow = Math.pow;
+        const maxWord = mathPow(2, 32);
+        let result = "";
+        const words = [];
+        const asciiBitLength = ascii.length * 8;
+        let hash = [];
+        const k = [];
+        let primeCounter = 0;
+        const isComposite = {};
+        for (let candidate = 2; primeCounter < 64; candidate++) {
+          if (!isComposite[candidate]) {
+            for (let i = 0; i < 313; i += candidate) isComposite[i] = candidate;
+            hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+            k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+          }
+        }
+        ascii += "\x80";
+        while ((ascii.length % 64) - 56) ascii += "\x00";
+        for (let i = 0; i < ascii.length; i++) {
+          const j = ascii.charCodeAt(i);
+          words[i >> 2] |= j << (((3 - i) % 4) * 8);
+        }
+        words[words.length] = (asciiBitLength / maxWord) | 0;
+        words[words.length] = asciiBitLength;
+        for (let j = 0; j < words.length; ) {
+          const w = words.slice(j, (j += 16));
+          const oldHash = hash.slice(0);
+          hash = hash.slice(0, 8);
+          for (let i = 0; i < 64; i++) {
+            const w15 = w[i - 15], w2 = w[i - 2];
+            const a = hash[0], e = hash[4];
+            const temp1 =
+              hash[7] +
+              (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) +
+              ((e & hash[5]) ^ (~e & hash[6])) +
+              k[i] +
+              (w[i] =
+                i < 16
+                  ? w[i]
+                  : (w[i - 16] +
+                      (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) +
+                      w[i - 7] +
+                      (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) |
+                    0);
+            const temp2 =
+              (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) +
+              ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+            hash = [(temp1 + temp2) | 0].concat(hash);
+            hash[4] = (hash[4] + temp1) | 0;
+          }
+          for (let i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
+        }
+        for (let i = 0; i < 8; i++) {
+          for (let j = 3; j + 1; j--) {
+            const b = (hash[i] >> (j * 8)) & 255;
+            result += (b < 16 ? "0" : "") + b.toString(16);
+          }
+        }
+        return result.toUpperCase();
+      }
+
+      /* ----------------------------------------------------------------------
+         2. ПРОФИЛИ ГОЛОСОВ И 5-СТУПЕНЧАТЫЙ ГИБРИДНЫЙ МОСТ (SMART NEURAL BRIDGE)
+         ---------------------------------------------------------------------- */
+      const VOICE_PROFILES = {
+        edge_svetlana: {
+          id: "ru-RU-SvetlanaNeural",
+          label: "СВЕТЛАНА NEURAL",
+          gender: "female",
+          matchKeywords: ["svetlana", "светлана"],
+          fallbackKeywords: ["irina", "ирина", "milena", "милена", "katya", "катя", "google русский", "female"],
+          acousticPitch: 0.98,
+          acousticRateMod: 0.98
+        },
+        edge_dmitry: {
+          id: "ru-RU-DmitryNeural",
+          label: "ДМИТРИЙ NEURAL",
+          gender: "male",
+          matchKeywords: ["dmitry", "дмитрий"],
+          fallbackKeywords: ["pavel", "павел", "yuri", "юрий", "aleksandr", "александр", "boris", "борис", "male"],
+          acousticPitch: 0.74,
+          acousticRateMod: 1.06
+        },
+        edge_dariya: {
+          id: "ru-RU-DariyaNeural",
+          label: "ДАРИЯ NEURAL",
+          gender: "female",
+          matchKeywords: ["dariya", "дария", "дарья", "daria"],
+          fallbackKeywords: ["katya", "катя", "milena", "милена", "google русский", "irina", "ирина"],
+          acousticPitch: 1.09,
+          acousticRateMod: 0.96
+        },
+        polly_tatyana: {
+          id: "ru-RU-SvetlanaNeural",
+          pollyId: "Tatyana",
+          label: "ТАТЬЯНА NEURAL",
+          gender: "female",
+          matchKeywords: ["tatyana", "татьяна", "svetlana", "светлана"],
+          fallbackKeywords: ["irina", "ирина", "milena", "милена", "google русский"],
+          acousticPitch: 0.94,
+          acousticRateMod: 1.00
+        },
+        polly_maxim: {
+          id: "ru-RU-DmitryNeural",
+          pollyId: "Maxim",
+          label: "МАКСИМ NEURAL",
+          gender: "male",
+          matchKeywords: ["maxim", "максим", "dmitry", "дмитрий"],
+          fallbackKeywords: ["pavel", "павел", "yuri", "юрий", "aleksandr", "александр"],
+          acousticPitch: 0.80,
+          acousticRateMod: 1.04
+        },
+        google_ru: {
+          id: "google_ru",
+          label: "GOOGLE STREAM MP3",
+          gender: "female",
+          matchKeywords: ["google русский"],
+          fallbackKeywords: ["google", "ru"],
+          acousticPitch: 1.00,
+          acousticRateMod: 1.00
+        }
+      };
+
+      class SmartNeuralBridge {
+        constructor() {
+          this.TRUSTED_TOKEN = "6A5AA1D4EAFF4E9FB37E23D68491D6F4";
+          this.cache = new Map();
+          this.deadGateways = new Map();
+        }
+
+        _isGatewayAlive(gwName) {
+          const deadUntil = this.deadGateways.get(gwName);
+          if (!deadUntil) return true;
+          if (Date.now() > deadUntil) {
+            this.deadGateways.delete(gwName);
+            return true;
+          }
+          return false;
+        }
+
+        _markGatewayDead(gwName, cooldownMs = 240000) {
+          this.deadGateways.set(gwName, Date.now() + cooldownMs);
+        }
+
+        _storeInCache(key, entry) {
+          if (this.cache.size > 60) {
+            const oldestKey = this.cache.keys().next().value;
+            const oldestVal = this.cache.get(oldestKey);
+            if (oldestVal && oldestVal.isBlobUrl) {
+              try { URL.revokeObjectURL(oldestVal.url); } catch (_) {}
+            }
+            this.cache.delete(oldestKey);
+          }
+          this.cache.set(key, entry);
+          return entry;
+        }
+
+        findMatchingSystemVoice(engineKey, russianVoices, exactOnly = false) {
+          const profile = VOICE_PROFILES[engineKey];
+          if (!profile || !russianVoices || !russianVoices.length) return null;
+
+          for (const v of russianVoices) {
+            const nameLow = String(v.name || "").toLowerCase();
+            if (profile.matchKeywords.some(k => nameLow.includes(k))) {
+              return v;
+            }
+          }
+          if (exactOnly) return null;
+
+          for (const kw of profile.fallbackKeywords) {
+            const found = russianVoices.find(v => String(v.name || "").toLowerCase().includes(kw));
+            if (found) return found;
+          }
+          return null;
+        }
+
+        async resolveVoiceSource(text, engineKey, russianVoices = []) {
+          const cleanText = String(text || "").trim();
+          const profile = VOICE_PROFILES[engineKey] || VOICE_PROFILES.edge_svetlana;
+          const cacheKey = `${engineKey}::${cleanText}`;
+
+          if (this.cache.has(cacheKey)) {
+            return this.cache.get(cacheKey);
+          }
+
+          // Ступень 1: Точный нативный нейроголос в браузере
+          const exactNativeNeural = this.findMatchingSystemVoice(engineKey, russianVoices, true);
+          if (exactNativeNeural) {
+            return {
+              type: "synth",
+              voice: exactNativeNeural,
+              label: `${profile.label} · НАТИВНЫЙ`,
+              pitchMod: 1.0,
+              rateMod: 1.0
+            };
+          }
+
+          // Ступень 2: Прямой поток Google Stream MP3
+          if (engineKey === "google_ru") {
+            const gUrl = this._buildGoogleTtsUrl(cleanText);
+            return this._storeInCache(cacheKey, {
+              type: "audio",
+              url: gUrl,
+              isBlobUrl: false,
+              label: profile.label,
+              useAcousticProfile: false,
+              profile
+            });
+          }
+
+          // Ступень 3: Облачные шлюзы Microsoft Edge WebSocket (Sec-MS-GEC) и Travis REST
+          if (profile.id && profile.id.endsWith("Neural")) {
+            const candidates = [];
+
+            if (this._isGatewayAlive("ms_ws")) {
+              candidates.push(
+                this._tryDirectMicrosoftWebSocket(cleanText, profile.id).catch(err => {
+                  this._markGatewayDead("ms_ws", 240000);
+                  throw err;
+                })
+              );
+            }
+
+            if (this._isGatewayAlive("travis_rest")) {
+              candidates.push(
+                this._tryTravisGateway(cleanText, profile.id).catch(err => {
+                  this._markGatewayDead("travis_rest", 240000);
+                  throw err;
+                })
+              );
+            }
+
+            if (candidates.length > 0) {
+              try {
+                const blobUrl = await this._promiseAny(candidates);
+                return this._storeInCache(cacheKey, {
+                  type: "audio",
+                  url: blobUrl,
+                  isBlobUrl: true,
+                  label: profile.label,
+                  useAcousticProfile: false,
+                  profile
+                });
+              } catch (_) {}
+            }
+          }
+
+          // Ступень 4: Мужской системный голос ОС (для профилей Дмитрия и Максима)
+          if (profile.gender === "male") {
+            const maleSystemVoice = this.findMatchingSystemVoice(engineKey, russianVoices, false);
+            if (maleSystemVoice) {
+              return {
+                type: "synth",
+                voice: maleSystemVoice,
+                label: `${profile.label} · ${maleSystemVoice.name.split(" ")[0].toUpperCase()}`,
+                pitchMod: engineKey === "edge_dmitry" ? 0.92 : 1.0,
+                rateMod: 1.0
+              };
+            }
+          }
+
+          // Ступень 5: Потоковый MP3 с индивидуальной акустической модуляцией тембра
+          const cloudUrl = this._buildGoogleTtsUrl(cleanText);
+          return this._storeInCache(cacheKey, {
+            type: "audio",
+            url: cloudUrl,
+            isBlobUrl: false,
+            label: `${profile.label} · ПОТОК`,
+            useAcousticProfile: true,
+            profile
+          });
+        }
+
+        _buildGoogleTtsUrl(text) {
+          const encoded = encodeURIComponent(text);
+          return `https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=ru&q=${encoded}`;
+        }
+
+        _promiseAny(promises) {
+          return new Promise((resolve, reject) => {
+            let errors = 0;
+            const total = promises.length;
+            if (total === 0) return reject(new Error("No promises"));
+            promises.forEach(p => {
+              Promise.resolve(p).then(resolve).catch(() => {
+                errors++;
+                if (errors === total) reject(new Error("All gateways failed"));
+              });
+            });
+          });
+        }
+
+        async _fetchWithTimeout(url, options, timeoutMs) {
+          const ctrl = new AbortController();
+          const id = setTimeout(() => ctrl.abort(), timeoutMs);
+          try {
+            return await fetch(url, { ...options, signal: ctrl.signal });
+          } finally {
+            clearTimeout(id);
+          }
+        }
+
+        async _tryTravisGateway(text, voiceId) {
+          const res = await this._fetchWithTimeout("https://tts.travisvn.com/v1/audio/speech", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "tts-1",
+              input: text,
+              voice: voiceId,
+              speed: 1.0
+            })
+          }, 2400);
+          if (!res.ok) throw new Error("GW status " + res.status);
+          const blob = await res.blob();
+          if (blob.size < 250) throw new Error("GW empty audio");
+          return URL.createObjectURL(blob);
+        }
+
+        _generateSecMsGec() {
+          const ticks = Math.floor(Date.now() / 1000) + 11644473600;
+          const rounded = ticks - (ticks % 300);
+          const timeToHash = rounded * 10000000;
+          return sha256Ascii(`${timeToHash}${this.TRUSTED_TOKEN}`);
+        }
+
+        _uuid() {
+          return "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx".replace(/[xy]/g, c => {
+            const r = (Math.random() * 16) | 0;
+            return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+          });
+        }
+
+        _escapeXml(s) {
+          return String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&apos;");
+        }
+
+        async _tryDirectMicrosoftWebSocket(text, voiceName) {
+          const secMsGec = this._generateSecMsGec();
+          const reqId = this._uuid();
+          const wsUrl = `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=${this.TRUSTED_TOKEN}&Sec-MS-GEC=${secMsGec}&Sec-MS-GEC-Version=1-132.0.2957.140&ConnectionId=${reqId}`;
+
+          return new Promise((resolve, reject) => {
+            let ws;
+            try { ws = new WebSocket(wsUrl); } catch (e) { return reject(e); }
+            ws.binaryType = "arraybuffer";
+            const chunks = [];
+            let done = false;
+
+            const timer = setTimeout(() => {
+              if (!done) {
+                done = true;
+                try { ws.close(); } catch (_) {}
+                reject(new Error("WS timeout"));
+              }
+            }, 2200);
+
+            ws.onopen = () => {
+              ws.send(
+                `X-Timestamp:${new Date().toISOString()}\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n` +
+                `{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}`
+              );
+              ws.send(
+                `X-RequestId:${reqId}\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:${new Date().toISOString()}Z\r\nPath:ssml\r\n\r\n` +
+                `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='ru-RU'><voice name='${voiceName}'><prosody pitch='+0Hz' rate='+0%' volume='+0%'>${this._escapeXml(text)}</prosody></voice></speak>`
+              );
+            };
+
+            ws.onmessage = (e) => {
+              if (typeof e.data === "string" && e.data.includes("Path:turn.end")) {
+                clearTimeout(timer);
+                if (!done) {
+                  done = true;
+                  try { ws.close(); } catch (_) {}
+                  if (!chunks.length) reject(new Error("Empty WS audio"));
+                  else resolve(URL.createObjectURL(new Blob(chunks, { type: "audio/mpeg" })));
+                }
+              } else if (e.data instanceof ArrayBuffer) {
+                const view = new DataView(e.data);
+                const hLen = view.getUint16(0, false);
+                if (e.data.byteLength > hLen + 2) chunks.push(e.data.slice(hLen + 2));
+              }
+            };
+
+            ws.onerror = () => {
+              clearTimeout(timer);
+              if (!done) { done = true; reject(new Error("WS blocked")); }
+            };
+            ws.onclose = () => {
+              clearTimeout(timer);
+              if (!done) { done = true; reject(new Error("WS closed")); }
+            };
+          });
+        }
+      }
+
+      /* ----------------------------------------------------------------------
+         3. ИНИЦИАЛИЗАЦИЯ СОСТОЯНИЯ, ЧИСТОЙ РУКОПИСИ И ДВУХДЕКОВОГО ТРАКТА
+         ---------------------------------------------------------------------- */
+      const STORAGE_KEY = "aura_reader_state_v3";
+      const DOCUMENTS = {
+        custom: { title: "Рукопись не загружена", text: "" }
+      };
+
+      const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
+      const audioDeck = [
+        document.getElementById("neuralAudioA"),
+        document.getElementById("neuralAudioB")
+      ];
+      let activeDeckIdx = 0;
+      let preloadedForIndex = -1;
+      let preloadedResolved = null;
+
+      const previewAudio = document.getElementById("previewAudio");
+      const bridge = new SmartNeuralBridge();
+
+      let state = "IDLE"; // IDLE | PLAYING | PAUSED
+      let sessionToken = 0;
+      let previewToken = 0;
+      let activeDocKey = "custom";
+      let segments = [];
+      let currentIndex = 0;
+
+      let strictRussianVoices = [];
+      let rate = 0.95;
+      let pitch = 1.00;
+      let volume = 1.0;
+      let trimOverlapMs = 140;
+      let autoScroll = true;
+      let themes = ["dark", "light", "oled"];
+      let themeIdx = 0;
+      let sleepTimerId = null;
+      let sleepRemainingSec = 0;
+      let wakeLockSentinel = null;
+      let watchdogTimerId = null;
+      let synthKeepAliveTimer = null;
+
+      // Состояние двухшагового подтверждения сброса рукописи (2500 мс)
+      let clearArmed = false;
+      let clearArmTimerId = null;
+
+      function getActiveAudio() {
+        return audioDeck[activeDeckIdx];
+      }
+
+      function getStandbyAudio() {
+        return audioDeck[1 - activeDeckIdx];
+      }
+
+      function getActiveDeckName() {
+        return activeDeckIdx === 0 ? "ДЕКА A" : "ДЕКА B";
+      }
+
+      function updateDeckTelemetryUI(isStandbyPreloaded = false) {
+        const slotA = document.getElementById("deckSlotA");
+        const slotB = document.getElementById("deckSlotB");
+        if (!slotA || !slotB) return;
+
+        slotA.classList.toggle("active-deck", activeDeckIdx === 0);
+        slotB.classList.toggle("active-deck", activeDeckIdx === 1);
+
+        if (isStandbyPreloaded) {
+          slotA.classList.toggle("standby-ready", activeDeckIdx === 1);
+          slotB.classList.toggle("standby-ready", activeDeckIdx === 0);
+        } else {
+          slotA.classList.remove("standby-ready");
+          slotB.classList.remove("standby-ready");
+        }
+      }
+
+      function clearAudioHandlers(el) {
+        if (!el) return;
+        el.onended = null;
+        el.onerror = null;
+        el.ontimeupdate = null;
+        el.onstalled = null;
+        el.onwaiting = null;
+      }
+
+      function clearAllAudioDecks() {
+        clearWatchdog();
+        preloadedForIndex = -1;
+        preloadedResolved = null;
+        audioDeck.forEach(el => {
+          clearAudioHandlers(el);
+          el.pause();
+        });
+        updateDeckTelemetryUI(false);
+      }
+
+      function clearWatchdog() {
+        if (watchdogTimerId) {
+          clearTimeout(watchdogTimerId);
+          watchdogTimerId = null;
+        }
+        if (synthKeepAliveTimer) {
+          clearInterval(synthKeepAliveTimer);
+          synthKeepAliveTimer = null;
+        }
+      }
+
+      /* ----------------------------------------------------------------------
+         4. СОХРАНЕНИЕ И ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ (LOCALSTORAGE V3)
+         ---------------------------------------------------------------------- */
+      function saveAppState() {
+        try {
+          const payload = {
+            activeDocKey: "custom",
+            currentIndex,
+            voice: document.getElementById("selectVoiceEngine").value,
+            rate,
+            pitch,
+            volume,
+            trimOverlapMs,
+            fontSize: parseInt(getComputedStyle(document.documentElement).getPropertyValue("--reader-font-size"), 10) || 21,
+            autoScroll,
+            themeIdx,
+            customDoc: DOCUMENTS.custom
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        } catch (_) {}
+      }
+
+      function loadAppState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return;
+          const data = JSON.parse(raw);
+
+          if (data.customDoc && typeof data.customDoc.text === "string") {
+            DOCUMENTS.custom = {
+              title: data.customDoc.title || "Сохраненная рукопись",
+              text: data.customDoc.text
+            };
+          }
+          if (typeof data.rate === "number") {
+            rate = data.rate;
+            document.getElementById("selectRate").value = rate.toFixed(2);
+          }
+          if (typeof data.pitch === "number") {
+            pitch = data.pitch;
+            const rPitch = document.getElementById("rangePitch");
+            rPitch.value = pitch.toFixed(2);
+            document.getElementById("lblPitch").textContent = pitch.toFixed(2);
+            updateSliderFill(rPitch);
+          }
+          if (typeof data.volume === "number") {
+            volume = data.volume;
+            const rVol = document.getElementById("rangeVolume");
+            rVol.value = volume;
+            document.getElementById("lblVolume").textContent = Math.round(volume * 100) + "%";
+            updateSliderFill(rVol);
+          }
+          if (typeof data.trimOverlapMs === "number") {
+            trimOverlapMs = data.trimOverlapMs;
+            const rTrim = document.getElementById("rangeTrimOverlap");
+            rTrim.value = trimOverlapMs;
+            document.getElementById("lblTrimOverlap").textContent = trimOverlapMs + " мс";
+            document.getElementById("metaEngineBadge").textContent = "PING-PONG БУФЕР · СРЕЗ СТЫКА " + trimOverlapMs + " МС";
+            updateSliderFill(rTrim);
+          }
+          if (typeof data.fontSize === "number") {
+            document.documentElement.style.setProperty("--reader-font-size", data.fontSize + "px");
+            const rFont = document.getElementById("rangeFontSize");
+            rFont.value = data.fontSize;
+            document.getElementById("lblFontSize").textContent = data.fontSize + "px";
+            updateSliderFill(rFont);
+          }
+          if (typeof data.autoScroll === "boolean") {
+            autoScroll = data.autoScroll;
+            document.getElementById("chkAutoScroll").checked = autoScroll;
+          }
+          if (typeof data.themeIdx === "number" && themes[data.themeIdx]) {
+            themeIdx = data.themeIdx;
+            const nextTheme = themes[themeIdx];
+            document.documentElement.setAttribute("data-theme", nextTheme);
+            const names = { dark: "Свет: Тёмная", light: "Свет: Светлая", oled: "Свет: OLED" };
+            document.getElementById("lblCycleTheme").textContent = names[nextTheme];
+          }
+          if (typeof data.currentIndex === "number" && data.currentIndex >= 0) {
+            currentIndex = data.currentIndex;
+          }
+          if (data.voice) {
+            window.__savedAuraVoice = data.voice;
+          }
+        } catch (_) {}
+      }
+
+      async function requestWakeLock(enable) {
+        if (!("wakeLock" in navigator)) return;
+        try {
+          if (enable && !wakeLockSentinel) {
+            wakeLockSentinel = await navigator.wakeLock.request("screen");
+            wakeLockSentinel.addEventListener("release", () => { wakeLockSentinel = null; });
+          } else if (!enable && wakeLockSentinel) {
+            await wakeLockSentinel.release();
+            wakeLockSentinel = null;
+          }
+        } catch (_) {}
+      }
+
+      /* ----------------------------------------------------------------------
+         5. СЕГМЕНТАЦИЯ РУКОПИСИ (MAX_CHUNK_LEN = 192), ОПТИЧЕСКИЙ ФОКУС И ГОЛОСА
+         ---------------------------------------------------------------------- */
+      function formatTabularIndex(num, total) {
+        const digits = Math.max(2, String(total).length);
+        return String(num).padStart(digits, "0") + " / " + String(total).padStart(digits, "0");
+      }
+
+      function updateEditorLiveCounter(rawText) {
+        const clean = String(rawText || "").trim();
+        const words = clean ? clean.split(/\s+/).filter(Boolean).length : 0;
+        const estSegments = clean ? Math.max(1, Math.ceil(clean.length / 150)) : 0;
+        const statEl = document.getElementById("editorLiveStats");
+        if (statEl) {
+          statEl.textContent = words + " слов · ~" + estSegments + " сегментов";
+        }
+      }
+
+      function parseAndRenderDocument(rawText, title) {
+        const cleanRaw = String(rawText || "").trim();
+        const resolvedTitle = cleanRaw ? (title || "Рукопись") : "Рукопись не загружена";
+
+        const titleEl = document.getElementById("bookTitleHeading");
+        titleEl.textContent = resolvedTitle;
+        titleEl.classList.remove("reveal-active");
+        void titleEl.offsetWidth;
+        titleEl.classList.add("reveal-active");
+
+        document.getElementById("headerDocPill").textContent = cleanRaw ? resolvedTitle : "Ожидание рукописи";
+
+        const container = document.getElementById("bookReadingContainer");
+        const zeroMatrix = document.getElementById("zeroStateMatrix");
+        container.innerHTML = "";
+        segments = [];
+        preloadedForIndex = -1;
+        preloadedResolved = null;
+
+        updateEditorLiveCounter(cleanRaw);
+
+        if (!cleanRaw) {
+          zeroMatrix.hidden = false;
+          container.hidden = true;
+          document.getElementById("metaSentences").textContent = "Фраз: 0";
+          document.getElementById("metaWords").textContent = "Слов: ~0";
+          document.getElementById("metaTime").textContent = "Звучание: ~0 мин";
+          document.getElementById("lblProgressCounter").textContent = "00 / 00";
+          document.getElementById("lblProgressPercent").textContent = "0%";
+          const slider = document.getElementById("dockProgressSlider");
+          slider.max = 0;
+          slider.value = 0;
+          updateSliderFill(slider);
+          document.getElementById("lblCurrentSentence").textContent = "Лист ожидает рукопись. Вставьте текст из буфера обмена или перетащите файл на страницу.";
+          document.getElementById("oledCurrentPhrase").textContent = "Лист ожидает рукопись";
+          return;
+        }
+
+        zeroMatrix.hidden = true;
+        container.hidden = false;
+
+        const MAX_CHUNK_LEN = 192;
+        const paragraphs = cleanRaw.split(/\r?\n+/).map(p => p.trim()).filter(Boolean);
+        let totalWords = 0;
+
+        paragraphs.forEach((paraText, pIdx) => {
+          const pEl = document.createElement("p");
+          pEl.className = "reading-paragraph";
+          pEl.style.animationDelay = Math.min(pIdx * 25, 300) + "ms";
+
+          const rawSentences = paraText.match(/[^.!?…]+[.!?…»"]*|[^.!?…]+/g) || [paraText];
+          const atomicPieces = [];
+
+          rawSentences.forEach(s => {
+            const trimmed = s.trim();
+            if (!trimmed) return;
+            if (trimmed.length <= MAX_CHUNK_LEN) {
+              atomicPieces.push(trimmed);
+            } else {
+              const parts = trimmed.split(/(?<=[,;:])\s+|\s+(?=[—–])\s*/);
+              let temp = "";
+              parts.forEach(part => {
+                if ((temp + " " + part).trim().length <= MAX_CHUNK_LEN) {
+                  temp = (temp + " " + part).trim();
+                } else {
+                  if (temp) atomicPieces.push(temp);
+                  temp = part.trim();
+                }
+              });
+              if (temp) atomicPieces.push(temp);
+            }
+          });
+
+          const mergedChunks = [];
+          let buffer = "";
+          atomicPieces.forEach(piece => {
+            if (!buffer) {
+              buffer = piece;
+            } else if ((buffer + " " + piece).length <= MAX_CHUNK_LEN && buffer.length < 95) {
+              buffer = buffer + " " + piece;
+            } else {
+              mergedChunks.push(buffer);
+              buffer = piece;
+            }
+          });
+          if (buffer) mergedChunks.push(buffer);
+
+          mergedChunks.forEach(chunkText => {
+            const segIdx = segments.length;
+            segments.push({ index: segIdx, paragraphIndex: pIdx, text: chunkText });
+            totalWords += chunkText.split(/\s+/).filter(Boolean).length;
+
+            const span = document.createElement("span");
+            span.className = "sentence-node";
+            span.id = "seg-node-" + segIdx;
+            span.textContent = chunkText + " ";
+            span.onclick = function () {
+              seekToIndex(segIdx, true);
+            };
+            pEl.appendChild(span);
+          });
+
+          container.appendChild(pEl);
+        });
+
+        document.getElementById("metaSentences").textContent = "Фраз: " + segments.length;
+        document.getElementById("metaWords").textContent = "Слов: ~" + totalWords;
+        document.getElementById("metaTime").textContent = "Звучание: ~" + Math.max(1, Math.round(totalWords / 130)) + " мин";
+
+        if (currentIndex >= segments.length) currentIndex = 0;
+        const slider = document.getElementById("dockProgressSlider");
+        slider.max = Math.max(0, segments.length - 1);
+        slider.value = currentIndex;
+        updateSliderFill(slider);
+        updateVisualHighlight();
+      }
+
+      function updateVisualHighlight() {
+        const container = document.getElementById("bookReadingContainer");
+        container.classList.toggle("is-playing", state === "PLAYING");
+
+        document.querySelectorAll(".sentence-node.active").forEach(el => el.classList.remove("active"));
+        document.querySelectorAll(".reading-paragraph.active-paragraph").forEach(el => el.classList.remove("active-paragraph"));
+
+        if (segments.length === 0) return;
+        if (currentIndex >= segments.length) currentIndex = 0;
+
+        const currentSeg = segments[currentIndex];
+        const targetNode = document.getElementById("seg-node-" + currentIndex);
+        if (targetNode) {
+          targetNode.classList.add("active");
+          if (targetNode.parentElement && targetNode.parentElement.classList.contains("reading-paragraph")) {
+            targetNode.parentElement.classList.add("active-paragraph");
+          }
+          if (autoScroll && state === "PLAYING") {
+            targetNode.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }
+
+        const total = segments.length;
+        const pct = total > 1 ? Math.round((currentIndex / (total - 1)) * 100) : 100;
+
+        document.getElementById("lblProgressCounter").textContent = formatTabularIndex(currentIndex + 1, total);
+        document.getElementById("lblProgressPercent").textContent = pct + "%";
+
+        const slider = document.getElementById("dockProgressSlider");
+        slider.value = currentIndex;
+        updateSliderFill(slider);
+
+        if (currentSeg) {
+          document.getElementById("lblCurrentSentence").textContent = currentSeg.text;
+          document.getElementById("oledCurrentPhrase").textContent = currentSeg.text;
+        }
+      }
+
+      function populateVoices() {
+        const sel = document.getElementById("selectVoiceEngine");
+        const previousValue = window.__savedAuraVoice || sel.value || "edge_svetlana";
+
+        let html = `
+          <optgroup label="Нейроголоса (Гибридный бесшовный мост)">
+            <option value="edge_svetlana">Светлана Neural (Мягкий женский · Мост)</option>
+            <option value="edge_dmitry">Дмитрий Neural (Глубокий мужской · Мост)</option>
+            <option value="edge_dariya">Дария Neural (Ясный женский · Мост)</option>
+            <option value="polly_tatyana">Татьяна (Спокойный женский поток)</option>
+            <option value="polly_maxim">Максим (Чёткий мужской поток)</option>
+            <option value="google_ru">Классический женский MP3 (Google Stream)</option>
+          </optgroup>
+        `;
+
+        if (synth) {
+          const allVoices = synth.getVoices() || [];
+          strictRussianVoices = allVoices.filter(v => {
+            const langNorm = String(v.lang || "").trim().toLowerCase();
+            const nameNorm = String(v.name || "").trim().toLowerCase();
+            return /^ru(-|_|$)/i.test(langNorm) || nameNorm.includes("russian") || nameNorm.includes("русский");
+          });
+
+          if (strictRussianVoices.length > 0) {
+            html += `<optgroup label="Системные русские голоса устройства (${strictRussianVoices.length})">`;
+            strictRussianVoices.forEach((v, idx) => {
+              const netTag = v.localService ? "Локальный" : "Сетевой";
+              html += `<option value="local_${idx}">${v.name} (${netTag})</option>`;
+            });
+            html += `</optgroup>`;
+          }
+        }
+
+        sel.innerHTML = html;
+        if (Array.from(sel.options).some(o => o.value === previousValue)) {
+          sel.value = previousValue;
+          window.__savedAuraVoice = null;
+        } else {
+          sel.value = "edge_svetlana";
+        }
+      }
+
+      if (synth) {
+        synth.onvoiceschanged = populateVoices;
+        setTimeout(populateVoices, 100);
+        setTimeout(populateVoices, 700);
+      }
+
+      function applyAudioElementAcousticSettings(audioEl, useAcousticProfile, profile) {
+        const userPitch = pitch;
+        const basePitch = useAcousticProfile && profile ? profile.acousticPitch : 1.0;
+        const baseRateMod = useAcousticProfile && profile ? profile.acousticRateMod : 1.0;
+        const combinedPitch = basePitch * userPitch;
+        const needsPitchShift = Math.abs(combinedPitch - 1.0) > 0.03;
+
+        if ("preservesPitch" in audioEl) audioEl.preservesPitch = !needsPitchShift;
+        if ("mozPreservesPitch" in audioEl) audioEl.mozPreservesPitch = !needsPitchShift;
+        if ("webkitPreservesPitch" in audioEl) audioEl.webkitPreservesPitch = !needsPitchShift;
+
+        if (needsPitchShift) {
+          audioEl.playbackRate = Math.max(0.55, Math.min(1.6, rate * combinedPitch * baseRateMod));
+        } else {
+          audioEl.playbackRate = rate;
+        }
+        audioEl.volume = volume;
+      }
+/* ----------------------------------------------------------------------
+         6. ДВУХКАНАЛЬНЫЙ PING-PONG АУДИОДВИЖОК (ЗАДЕРЖКА 0 МС И СРЕЗ СТЫКОВ)
+         ---------------------------------------------------------------------- */
+      function setMainPlayIcons(isPlaying) {
+        const iconRef = isPlaying ? "#ico-pause" : "#ico-play";
+        const mainSvg = document.getElementById("icoMainPlaySvg");
+        const oledSvg = document.getElementById("icoOledPlaySvg");
+        const oledTxt = document.getElementById("lblOledPlayText");
+
+        if (mainSvg) mainSvg.innerHTML = `<use href="${iconRef}"></use>`;
+        if (oledSvg) oledSvg.innerHTML = `<use href="${iconRef}"></use>`;
+        if (oledTxt) oledTxt.textContent = isPlaying ? "Пауза" : "Старт";
+      }
+
+      function setUIState(newState, customLabel) {
+        state = newState;
+        const badge = document.getElementById("lblStateBadge");
+        const stateText = document.getElementById("lblStateText");
+        const container = document.getElementById("bookReadingContainer");
+        const deckTag = getActiveDeckName();
+
+        badge.classList.remove("is-playing", "is-paused");
+        container.classList.toggle("is-playing", state === "PLAYING");
+
+        if (state === "PLAYING") {
+          badge.classList.add("is-playing");
+          stateText.textContent = customLabel || `${deckTag} · В ЭФИРЕ · СРЕЗ СТЫКА ${trimOverlapMs} МС`;
+          setMainPlayIcons(true);
+          requestWakeLock(true);
+        } else if (state === "PAUSED") {
+          badge.classList.add("is-paused");
+          stateText.textContent = customLabel || `${deckTag} · ПАУЗА · СРЕЗ СТЫКА ${trimOverlapMs} МС`;
+          setMainPlayIcons(false);
+          requestWakeLock(false);
+        } else {
+          stateText.textContent = customLabel || `${deckTag} · ОЖИДАНИЕ · СРЕЗ СТЫКА ${trimOverlapMs} МС`;
+          setMainPlayIcons(false);
+          requestWakeLock(false);
+        }
+      }
+
+      function isOnlineNeuralEngine(engine) {
+        return !String(engine).startsWith("local_");
+      }
+
+      function stopPreviewIfRunning() {
+        previewToken++;
+        clearAudioHandlers(previewAudio);
+        previewAudio.pause();
+        try { previewAudio.currentTime = 0; } catch (_) {}
+        const btnPrev = document.getElementById("btnPreviewVoice");
+        if (btnPrev) btnPrev.classList.remove("is-previewing");
+      }
+
+      function togglePlay() {
+        stopPreviewIfRunning();
+        const editorDrawer = document.getElementById("editorDrawer");
+        if (!editorDrawer.hidden) {
+          saveEditorText(false);
+        }
+
+        if (state === "PLAYING") {
+          pauseReading();
+        } else if (state === "PAUSED") {
+          resumeReading();
+        } else {
+          startReading();
+        }
+      }
+
+      function startReading() {
+        stopPreviewIfRunning();
+        if (segments.length === 0) {
+          setUIState("IDLE", "ДЕКА A · ОЖИДАНИЕ РУКОПИСИ");
+          return;
+        }
+        const token = ++sessionToken;
+        if (synth) synth.cancel();
+        clearAllAudioDecks();
+
+        setUIState("PLAYING", `${getActiveDeckName()} · В ЭФИРЕ · СРЕЗ СТЫКА ${trimOverlapMs} МС`);
+        setupMediaSession();
+        speakCurrentSegment(token, false);
+      }
+
+      function pauseReading() {
+        sessionToken++;
+        clearWatchdog();
+        audioDeck.forEach(el => el.pause());
+        if (synth && synth.speaking) {
+          synth.pause();
+        }
+        setUIState("PAUSED");
+      }
+
+      function resumeReading() {
+        const token = ++sessionToken;
+        const activeEl = getActiveAudio();
+        if (activeEl.src && activeEl.paused && activeEl.currentTime > 0 && !activeEl.ended) {
+          setUIState("PLAYING", `${getActiveDeckName()} · В ЭФИРЕ · СРЕЗ СТЫКА ${trimOverlapMs} МС`);
+          activeEl.play().catch(() => speakCurrentSegment(token, false));
+          return;
+        }
+
+        if (synth && synth.paused) {
+          setUIState("PLAYING", `${getActiveDeckName()} · В ЭФИРЕ · СИНТЕЗ`);
+          synth.resume();
+          setTimeout(() => {
+            if (token === sessionToken && state === "PLAYING" && (!synth.speaking || synth.paused)) {
+              speakCurrentSegment(token, false);
+            }
+          }, 250);
+          return;
+        }
+
+        startReading();
+      }
+
+      function stopReading() {
+        sessionToken++;
+        stopPreviewIfRunning();
+        if (synth) synth.cancel();
+        clearAllAudioDecks();
+        setUIState("IDLE", `${getActiveDeckName()} · ОСТАНОВЛЕНО · СРЕЗ СТЫКА ${trimOverlapMs} МС`);
+      }
+
+      /**
+       * Предварительная буферизация следующего сегмента (N + 1) во вторую деку (1 - activeDeckIdx)
+       * и фоновый прогрев LRU-кэша для сегмента (N + 2).
+       */
+      async function preloadNextSegmentIntoStandby(nextIdx, engine, token) {
+        if (token !== sessionToken || nextIdx >= segments.length) return;
+        if (preloadedForIndex === nextIdx && preloadedResolved) return;
+
+        try {
+          const nextText = segments[nextIdx].text;
+          const resolved = await bridge.resolveVoiceSource(nextText, engine, strictRussianVoices);
+          if (token !== sessionToken || state !== "PLAYING") return;
+
+          if (resolved.type === "audio") {
+            const standbyEl = getStandbyAudio();
+            clearAudioHandlers(standbyEl);
+            standbyEl.pause();
+            standbyEl.src = resolved.url;
+            applyAudioElementAcousticSettings(standbyEl, resolved.useAcousticProfile, resolved.profile);
+            standbyEl.load();
+            preloadedForIndex = nextIdx;
+            preloadedResolved = resolved;
+            updateDeckTelemetryUI(true);
+          }
+
+          if (nextIdx + 1 < segments.length) {
+            bridge.resolveVoiceSource(segments[nextIdx + 1].text, engine, strictRussianVoices).catch(() => {});
+          }
+        } catch (_) {}
+      }
+
+      async function speakCurrentSegment(token, usePreloadedStandby = false) {
+        if (token !== sessionToken) return;
+        clearWatchdog();
+
+        if (currentIndex >= segments.length) {
+          currentIndex = 0;
+          updateDeckTelemetryUI(false);
+          setUIState("IDLE", `${getActiveDeckName()} · ЗАВЕРШЕНО · СРЕЗ СТЫКА ${trimOverlapMs} МС`);
+          updateVisualHighlight();
+          saveAppState();
+          return;
+        }
+
+        updateVisualHighlight();
+        saveAppState();
+        const phrase = segments[currentIndex].text;
+        const engine = document.getElementById("selectVoiceEngine").value;
+
+        if (isOnlineNeuralEngine(engine)) {
+          await playSmartNeuralSegment(phrase, engine, token, usePreloadedStandby);
+        } else {
+          playLocalSpeechSegment(phrase, engine, token, true);
+        }
+      }
+
+      async function playSmartNeuralSegment(phrase, engine, token, usePreloadedStandby) {
+        try {
+          let resolved;
+          let currentAudioEl;
+
+          if (usePreloadedStandby && preloadedForIndex === currentIndex && preloadedResolved) {
+            activeDeckIdx = 1 - activeDeckIdx;
+            currentAudioEl = getActiveAudio();
+            resolved = preloadedResolved;
+            preloadedForIndex = -1;
+            preloadedResolved = null;
+            updateDeckTelemetryUI(false);
+          } else {
+            resolved = await bridge.resolveVoiceSource(phrase, engine, strictRussianVoices);
+            if (token !== sessionToken || state !== "PLAYING") return;
+
+            if (resolved.type === "synth") {
+              updateDeckTelemetryUI(false);
+              setUIState("PLAYING", `${getActiveDeckName()} · В ЭФИРЕ · ${resolved.label}`);
+              playSynthesizedVoiceObject(
+                phrase,
+                resolved.voice,
+                rate * (resolved.rateMod || 1.0),
+                pitch * (resolved.pitchMod || 1.0),
+                token,
+                false
+              );
+              return;
+            }
+
+            currentAudioEl = getActiveAudio();
+            clearAudioHandlers(currentAudioEl);
+            currentAudioEl.src = resolved.url;
+            updateDeckTelemetryUI(false);
+          }
+
+          setUIState("PLAYING", `${getActiveDeckName()} · В ЭФИРЕ · СРЕЗ СТЫКА ${trimOverlapMs} МС`);
+          applyAudioElementAcousticSettings(currentAudioEl, resolved.useAcousticProfile, resolved.profile);
+
+          let advancedToNext = false;
+          const advanceNow = () => {
+            if (advancedToNext || token !== sessionToken || state !== "PLAYING") return;
+            advancedToNext = true;
+            clearWatchdog();
+            clearAudioHandlers(currentAudioEl);
+            currentAudioEl.pause();
+            currentIndex++;
+            speakCurrentSegment(token, true);
+          };
+
+          if (trimOverlapMs > 0) {
+            const overlapSec = trimOverlapMs / 1000;
+            currentAudioEl.ontimeupdate = function () {
+              if (advancedToNext || token !== sessionToken || state !== "PLAYING") return;
+              const dur = currentAudioEl.duration;
+              if (dur && isFinite(dur) && dur > 0.6) {
+                const remaining = (dur - currentAudioEl.currentTime) / (currentAudioEl.playbackRate || 1);
+                if (remaining <= overlapSec) {
+                  advanceNow();
+                }
+              }
+            };
+          }
+
+          currentAudioEl.onended = function () {
+            advanceNow();
+          };
+
+          const resetStallWatchdog = (timeoutMs) => {
+            if (watchdogTimerId) clearTimeout(watchdogTimerId);
+            watchdogTimerId = setTimeout(() => {
+              if (advancedToNext || token !== sessionToken || state !== "PLAYING") return;
+              if (currentAudioEl.currentTime === 0 || currentAudioEl.paused) {
+                clearAudioHandlers(currentAudioEl);
+                currentAudioEl.pause();
+                const fallbackVoice = bridge.findMatchingSystemVoice(engine, strictRussianVoices, false) || strictRussianVoices[0] || null;
+                const prof = resolved.profile || VOICE_PROFILES[engine] || VOICE_PROFILES.edge_svetlana;
+                playSynthesizedVoiceObject(phrase, fallbackVoice, rate, pitch * prof.acousticPitch, token, false);
+              } else {
+                advanceNow();
+              }
+            }, timeoutMs);
+          };
+
+          const expectedMaxMs = Math.max(7000, Math.round((phrase.length * 95) / rate) + 4500);
+          resetStallWatchdog(expectedMaxMs);
+
+          currentAudioEl.onstalled = () => resetStallWatchdog(3500);
+          currentAudioEl.onwaiting = () => resetStallWatchdog(3500);
+
+          currentAudioEl.onerror = function () {
+            if (advancedToNext || token !== sessionToken || state !== "PLAYING") return;
+            advancedToNext = true;
+            clearWatchdog();
+            const fallbackVoice = bridge.findMatchingSystemVoice(engine, strictRussianVoices, false) || strictRussianVoices[0] || null;
+            const prof = resolved.profile || VOICE_PROFILES[engine] || VOICE_PROFILES.edge_svetlana;
+            setUIState("PLAYING", `${getActiveDeckName()} · В ЭФИРЕ · АВТОНОМНЫЙ МОСТ`);
+            playSynthesizedVoiceObject(phrase, fallbackVoice, rate, pitch * prof.acousticPitch, token, false);
+          };
+
+          await currentAudioEl.play();
+
+          if (currentIndex + 1 < segments.length) {
+            preloadNextSegmentIntoStandby(currentIndex + 1, engine, token);
+          }
+        } catch (_) {
+          if (token !== sessionToken || state !== "PLAYING") return;
+          const fallbackVoice = bridge.findMatchingSystemVoice(engine, strictRussianVoices, false) || strictRussianVoices[0] || null;
+          const prof = VOICE_PROFILES[engine] || VOICE_PROFILES.edge_svetlana;
+          setUIState("PLAYING", `${getActiveDeckName()} · В ЭФИРЕ · АВТОНОМНЫЙ МОСТ`);
+          playSynthesizedVoiceObject(phrase, fallbackVoice, rate, pitch * prof.acousticPitch, token, false);
+        }
+      }
+
+      function playSynthesizedVoiceObject(phrase, voiceObj, finalRate, finalPitch, token, shouldCancelFirst = false) {
+        if (!synth) {
+          setUIState("PAUSED", "ДЕКА A · СИНТЕЗ НЕДОСТУПЕН");
+          return;
+        }
+        clearWatchdog();
+
+        if (shouldCancelFirst && (synth.speaking || synth.pending)) {
+          synth.cancel();
+        }
+
+        const u = new SpeechSynthesisUtterance(phrase);
+        window.__activeAuraUtterance = u;
+
+        if (voiceObj) {
+          u.voice = voiceObj;
+          u.lang = voiceObj.lang || "ru-RU";
+        } else {
+          u.lang = "ru-RU";
+        }
+
+        u.rate = Math.max(0.5, Math.min(2.0, finalRate));
+        u.pitch = Math.max(0.5, Math.min(1.6, finalPitch));
+        u.volume = volume;
+
+        let finished = false;
+        const nextStep = () => {
+          if (finished || token !== sessionToken || state !== "PLAYING") return;
+          finished = true;
+          clearWatchdog();
+          currentIndex++;
+          speakCurrentSegment(token, false);
+        };
+
+        synthKeepAliveTimer = setInterval(() => {
+          if (synth.speaking && !synth.paused) {
+            synth.pause();
+            synth.resume();
+          }
+        }, 10000);
+
+        const maxDurationMs = Math.max(6000, Math.round((phrase.length * 100) / u.rate) + 4000);
+        watchdogTimerId = setTimeout(() => {
+          nextStep();
+        }, maxDurationMs);
+
+        u.onend = nextStep;
+        u.onerror = function (e) {
+          if (e.error === "canceled" || e.error === "interrupted") return;
+          nextStep();
+        };
+
+        synth.speak(u);
+      }
+
+      function playLocalSpeechSegment(phrase, engine, token, isNaturalTransition) {
+        const idx = parseInt(String(engine).replace("local_", ""), 10);
+        const vObj = (!isNaN(idx) && strictRussianVoices[idx]) ? strictRussianVoices[idx] : null;
+        const vLabel = vObj ? vObj.name.toUpperCase() : "СИСТЕМНЫЙ ТРАКТ";
+        setUIState("PLAYING", `${getActiveDeckName()} · В ЭФИРЕ · ${vLabel}`);
+        playSynthesizedVoiceObject(phrase, vObj, rate, pitch, token, !isNaturalTransition);
+      }
+
+      /* ----------------------------------------------------------------------
+         7. ИЗОЛИРОВАННЫЙ КАНАЛ ПРОБЫ ГОЛОСА С 4-ПОЛОСНЫМ ЭКВАЛАЙЗЕРОМ
+         ---------------------------------------------------------------------- */
+      async function previewSelectedVoice() {
+        if (state === "PLAYING") {
+          pauseReading();
+        }
+        stopPreviewIfRunning();
+        if (synth) synth.cancel();
+
+        const myPreviewToken = ++previewToken;
+        const statusEl = document.getElementById("previewStatusText");
+        const btnPrev = document.getElementById("btnPreviewVoice");
+        const engine = document.getElementById("selectVoiceEngine").value;
+        const prof = VOICE_PROFILES[engine];
+
+        const customPhrases = {
+          edge_svetlana: "Здравствуйте. Меня зовут Светлана. Двухдековый тракт откалиброван для бесшовного чтения вашей рукописи.",
+          edge_dmitry: "Здравствуйте. Я Дмитрий. Проверим акустический баланс мужского тембра перед началом чтения.",
+          edge_dariya: "Здравствуйте. Я Дария. Оцените чистоту артикуляции и темп речи на выбранных настройках.",
+          polly_tatyana: "Здравствуйте. Это голос Татьяны. Канал готов к продолжительному чтению.",
+          polly_maxim: "Здравствуйте. Это голос Максима. Проверка тембра и громкости завершена."
+        };
+        const testPhrase = customPhrases[engine] || "Здравствуйте. Это изолированная проба выбранного голосового тракта.";
+
+        statusEl.textContent = "Калибровка и запрос голосового потока...";
+        if (btnPrev) btnPrev.classList.add("is-previewing");
+
+        if (isOnlineNeuralEngine(engine)) {
+          try {
+            const resolved = await bridge.resolveVoiceSource(testPhrase, engine, strictRussianVoices);
+            if (myPreviewToken !== previewToken) return;
+
+            if (resolved.type === "synth") {
+              speakPreviewWithSynth(testPhrase, resolved.voice, rate * (resolved.rateMod || 1), pitch * (resolved.pitchMod || 1), resolved.label, myPreviewToken);
+              return;
+            }
+
+            clearAudioHandlers(previewAudio);
+            previewAudio.src = resolved.url;
+            applyAudioElementAcousticSettings(previewAudio, resolved.useAcousticProfile, resolved.profile);
+
+            previewAudio.onended = function () {
+              if (myPreviewToken !== previewToken) return;
+              if (btnPrev) btnPrev.classList.remove("is-previewing");
+              statusEl.textContent = "Проба завершена · " + resolved.label;
+            };
+
+            previewAudio.onerror = function () {
+              if (myPreviewToken !== previewToken) return;
+              const fallbackVoice = bridge.findMatchingSystemVoice(engine, strictRussianVoices, false) || strictRussianVoices[0] || null;
+              const p = prof || VOICE_PROFILES.edge_svetlana;
+              speakPreviewWithSynth(testPhrase, fallbackVoice, rate, pitch * p.acousticPitch, p.label + " · АВТОНОМНЫЙ МОСТ", myPreviewToken);
+            };
+
+            statusEl.textContent = "В эфире проба · " + resolved.label;
+            await previewAudio.play();
+          } catch (_) {
+            if (myPreviewToken !== previewToken) return;
+            const fallbackVoice = bridge.findMatchingSystemVoice(engine, strictRussianVoices, false) || strictRussianVoices[0] || null;
+            const p = prof || VOICE_PROFILES.edge_svetlana;
+            speakPreviewWithSynth(testPhrase, fallbackVoice, rate, pitch * p.acousticPitch, p.label + " · АВТОНОМНЫЙ МОСТ", myPreviewToken);
+          }
+        } else {
+          const idx = parseInt(String(engine).replace("local_", ""), 10);
+          const vObj = (!isNaN(idx) && strictRussianVoices[idx]) ? strictRussianVoices[idx] : null;
+          speakPreviewWithSynth(testPhrase, vObj, rate, pitch, vObj ? vObj.name : "Системный голос", myPreviewToken);
+        }
+      }
+
+      function speakPreviewWithSynth(text, voiceObj, rVal, pVal, labelText, myPreviewToken) {
+        const statusEl = document.getElementById("previewStatusText");
+        const btnPrev = document.getElementById("btnPreviewVoice");
+        if (!synth) {
+          if (btnPrev) btnPrev.classList.remove("is-previewing");
+          statusEl.textContent = "Синтезатор речи недоступен в текущем окружении";
+          return;
+        }
+        synth.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        window.__activePreviewUtterance = u;
+        if (voiceObj) {
+          u.voice = voiceObj;
+          u.lang = voiceObj.lang || "ru-RU";
+        } else {
+          u.lang = "ru-RU";
+        }
+        u.rate = Math.max(0.5, Math.min(2.0, rVal));
+        u.pitch = Math.max(0.5, Math.min(1.6, pVal));
+        u.volume = volume;
+
+        u.onend = function () {
+          if (myPreviewToken !== previewToken) return;
+          if (btnPrev) btnPrev.classList.remove("is-previewing");
+          statusEl.textContent = "Проба завершена · " + labelText;
+        };
+        u.onerror = function (e) {
+          if (e.error === "canceled" || e.error === "interrupted") return;
+          if (btnPrev) btnPrev.classList.remove("is-previewing");
+          statusEl.textContent = "Сбой воспроизведения тестового сигнала";
+        };
+        statusEl.textContent = "В эфире проба · " + labelText;
+        synth.speak(u);
+      }
+
+      function stopPreview() {
+        stopPreviewIfRunning();
+        if (synth && state !== "PLAYING") synth.cancel();
+        document.getElementById("previewStatusText").textContent = "Проба голоса остановлена";
+      }
+
+      /* ----------------------------------------------------------------------
+         8. БУФЕР ОБМЕНА, DRAG-AND-DROP ИМПОРТ, ДВУХШАГОВЫЙ СБРОС И КАРМАННЫЙ OLED
+         ---------------------------------------------------------------------- */
+      function seekToIndex(idx, autoStart) {
+        if (segments.length === 0) return;
+        const target = Math.max(0, Math.min(segments.length - 1, parseInt(idx, 10) || 0));
+        currentIndex = target;
+        preloadedForIndex = -1;
+        preloadedResolved = null;
+        updateVisualHighlight();
+        saveAppState();
+        if (state === "PLAYING" || autoStart) {
+          startReading();
+        }
+      }
+
+      function prevSentence() {
+        if (currentIndex > 0) seekToIndex(currentIndex - 1, state === "PLAYING");
+      }
+
+      function nextSentence() {
+        if (currentIndex < segments.length - 1) seekToIndex(currentIndex + 1, state === "PLAYING");
+      }
+
+      // Двухшаговое подтверждение очистки рукописи (2500 мс)
+      function disarmClearButton() {
+        clearArmed = false;
+        if (clearArmTimerId) {
+          clearTimeout(clearArmTimerId);
+          clearArmTimerId = null;
+        }
+        const btn = document.getElementById("btnClearTop");
+        const lbl = document.getElementById("lblClearTop");
+        if (btn) btn.classList.remove("is-armed-danger");
+        if (lbl) lbl.textContent = "Очистить";
+      }
+
+      function clearAllText() {
+        const btn = document.getElementById("btnClearTop");
+        const lbl = document.getElementById("lblClearTop");
+
+        if (!clearArmed) {
+          clearArmed = true;
+          if (btn) btn.classList.add("is-armed-danger");
+          if (lbl) lbl.textContent = "Подтвердить сброс?";
+          if (clearArmTimerId) clearTimeout(clearArmTimerId);
+          clearArmTimerId = setTimeout(disarmClearButton, 2500);
+          return;
+        }
+
+        disarmClearButton();
+        stopReading();
+        toggleEditor(false);
+        toggleStudio(false);
+
+        DOCUMENTS.custom = { title: "Рукопись не загружена", text: "" };
+        document.getElementById("editDocTitle").value = "";
+        document.getElementById("editorTextarea").value = "";
+        currentIndex = 0;
+        parseAndRenderDocument("", "Рукопись не загружена");
+        saveAppState();
+      }
+
+      function clearEditorArea() {
+        stopReading();
+        const area = document.getElementById("editorTextarea");
+        const titleInput = document.getElementById("editDocTitle");
+        area.value = "";
+        titleInput.value = "";
+
+        DOCUMENTS.custom = { title: "Рукопись не загружена", text: "" };
+        currentIndex = 0;
+        parseAndRenderDocument("", "Рукопись не загружена");
+        saveAppState();
+        area.focus();
+      }
+
+      // Чтение из буфера обмена с фолбэком на открытие модального редактора
+      async function pasteFromClipboardAndRead() {
+        if (!navigator.clipboard || typeof navigator.clipboard.readText !== "function") {
+          toggleEditor(true);
+          document.getElementById("editorTextarea").focus();
+          return;
+        }
+        try {
+          const clipText = await navigator.clipboard.readText();
+          const clean = String(clipText || "").trim();
+          if (!clean) {
+            toggleEditor(true);
+            document.getElementById("editorTextarea").focus();
+            return;
+          }
+          const firstLine = clean.split(/\r?\n/)[0].trim().slice(0, 56);
+          const derivedTitle = firstLine.length > 3 ? firstLine : "Рукопись из буфера обмена";
+
+          stopReading();
+          DOCUMENTS.custom = { title: derivedTitle, text: clean };
+          document.getElementById("editDocTitle").value = derivedTitle;
+          document.getElementById("editorTextarea").value = clean;
+          currentIndex = 0;
+          parseAndRenderDocument(clean, derivedTitle);
+          saveAppState();
+          startReading();
+        } catch (_) {
+          toggleEditor(true);
+          document.getElementById("editorTextarea").focus();
+        }
+      }
+
+      async function pasteIntoEditorArea() {
+        const area = document.getElementById("editorTextarea");
+        if (!navigator.clipboard || typeof navigator.clipboard.readText !== "function") {
+          area.focus();
+          return;
+        }
+        try {
+          const clipText = await navigator.clipboard.readText();
+          const clean = String(clipText || "").trim();
+          if (clean) {
+            area.value = clean;
+            area.dispatchEvent(new Event("input"));
+          }
+          area.focus();
+        } catch (_) {
+          area.focus();
+        }
+      }
+
+      // Дебаунс-автосохранение в текстовом поле редактора (350 мс)
+      let editorDebounceTimer = null;
+      const editorTextarea = document.getElementById("editorTextarea");
+      editorTextarea.addEventListener("input", function () {
+        updateEditorLiveCounter(editorTextarea.value);
+        clearTimeout(editorDebounceTimer);
+        editorDebounceTimer = setTimeout(() => {
+          const val = editorTextarea.value.trim();
+          const title = document.getElementById("editDocTitle").value.trim() || (val ? "Рукопись" : "Рукопись не загружена");
+          DOCUMENTS.custom = { title, text: val };
+          currentIndex = 0;
+          parseAndRenderDocument(val, title);
+          saveAppState();
+        }, 350);
+      });
+
+      function toggleEditor(forceState) {
+        const drawer = document.getElementById("editorDrawer");
+        const btn = document.getElementById("btnToggleEditor");
+        const nextOpen = typeof forceState === "boolean" ? forceState : drawer.hidden;
+
+        if (nextOpen) {
+          document.getElementById("studioDrawer").hidden = true;
+          document.getElementById("btnToggleStudio").classList.remove("active");
+          const curDoc = DOCUMENTS.custom;
+          document.getElementById("editDocTitle").value = curDoc.text ? curDoc.title : "";
+          document.getElementById("editorTextarea").value = curDoc.text;
+          updateEditorLiveCounter(curDoc.text);
+          drawer.hidden = false;
+          btn.classList.add("active");
+          setTimeout(() => document.getElementById("editorTextarea").focus(), 60);
+        } else {
+          drawer.hidden = true;
+          btn.classList.remove("active");
+        }
+      }
+
+      function saveEditorText(startImmediately) {
+        const newText = document.getElementById("editorTextarea").value.trim();
+        const newTitle = document.getElementById("editDocTitle").value.trim() || (newText ? "Рукопись" : "Рукопись не загружена");
+
+        stopReading();
+        DOCUMENTS.custom = { title: newTitle, text: newText };
+        currentIndex = 0;
+        parseAndRenderDocument(newText, newTitle);
+        saveAppState();
+        toggleEditor(false);
+
+        if (startImmediately && newText) {
+          startReading();
+        }
+      }
+
+      function processImportedFileObject(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          let content = String(e.target.result || "");
+          const lowName = file.name.toLowerCase();
+          if (lowName.endsWith(".html") || lowName.endsWith(".htm")) {
+            const doc = new DOMParser().parseFromString(content, "text/html");
+            doc.querySelectorAll("script, style, noscript").forEach(n => n.remove());
+            content = doc.body ? doc.body.textContent : content;
+          }
+          const cleanContent = content.trim();
+          const newTitle = file.name.replace(/\.[^.]+$/, "") || "Импортированная рукопись";
+
+          stopReading();
+          document.getElementById("editDocTitle").value = newTitle;
+          document.getElementById("editorTextarea").value = cleanContent;
+
+          DOCUMENTS.custom = { title: newTitle, text: cleanContent };
+          currentIndex = 0;
+          parseAndRenderDocument(cleanContent, newTitle);
+          saveAppState();
+          toggleEditor(false);
+          setUIState("IDLE", `${getActiveDeckName()} · ФАЙЛ ЗАГРУЖЕН · СРЕЗ СТЫКА ${trimOverlapMs} МС`);
+        };
+        reader.readAsText(file, "UTF-8");
+      }
+
+      function importTextFile(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+        processImportedFileObject(file);
+        event.target.value = "";
+      }
+
+      // Привязка полноэкранного и модального Drag-and-Drop (.txt, .md, .html, .htm)
+      function bindDragAndDropTargets() {
+        const bookSheet = document.getElementById("bookSheet");
+        const zeroMatrix = document.getElementById("zeroStateMatrix");
+        const editorDrop = document.getElementById("editorDropZone");
+
+        const setDragVisual = (active) => {
+          if (bookSheet) bookSheet.classList.toggle("drag-over", active);
+          if (zeroMatrix) zeroMatrix.classList.toggle("drag-over", active);
+          if (editorDrop) editorDrop.classList.toggle("drag-over", active);
+        };
+
+        window.addEventListener("dragover", function (e) {
+          e.preventDefault();
+          setDragVisual(true);
+        });
+
+        window.addEventListener("dragleave", function (e) {
+          if (!e.relatedTarget || e.relatedTarget.nodeName === "HTML") {
+            setDragVisual(false);
+          }
+        });
+
+        window.addEventListener("drop", function (e) {
+          e.preventDefault();
+          setDragVisual(false);
+          const files = e.dataTransfer && e.dataTransfer.files;
+          if (files && files.length > 0) {
+            processImportedFileObject(files[0]);
+          }
+        });
+      }
+      bindDragAndDropTargets();
+
+      function toggleStudio(forceState) {
+        const drawer = document.getElementById("studioDrawer");
+        const btn = document.getElementById("btnToggleStudio");
+        const nextOpen = typeof forceState === "boolean" ? forceState : drawer.hidden;
+
+        if (nextOpen) {
+          document.getElementById("editorDrawer").hidden = true;
+          document.getElementById("btnToggleEditor").classList.remove("active");
+          drawer.hidden = false;
+          btn.classList.add("active");
+        } else {
+          drawer.hidden = true;
+          btn.classList.remove("active");
+        }
+      }
+
+      function toggleFocus() {
+        toggleEditor(false);
+        toggleStudio(false);
+        document.body.classList.toggle("focus-mode");
+        const isFocus = document.body.classList.contains("focus-mode");
+        document.getElementById("btnToggleFocus").classList.toggle("active", isFocus);
+        setTimeout(updateLayoutOffsets, 50);
+      }
+
+      function cycleTheme() {
+        themeIdx = (themeIdx + 1) % themes.length;
+        const nextTheme = themes[themeIdx];
+        document.documentElement.setAttribute("data-theme", nextTheme);
+        const names = { dark: "Свет: Тёмная", light: "Свет: Светлая", oled: "Свет: OLED" };
+        document.getElementById("lblCycleTheme").textContent = names[nextTheme];
+        saveAppState();
+      }
+
+      function toggleOled(show) {
+        const overlay = document.getElementById("oledOverlay");
+        overlay.hidden = !show;
+        if (show && state === "PLAYING") requestWakeLock(true);
+      }
+
+      // Защита от случайного касания в карманном режиме OLED: удержание 900 мс
+      function bindOledHoldToUnlock() {
+        const btnHold = document.getElementById("btnHoldUnlock");
+        const lblHold = document.getElementById("lblHoldUnlockText");
+        let holdTimer = null;
+
+        const startHold = (e) => {
+          if (e.type === "pointerdown" && e.button !== 0) return;
+          e.preventDefault();
+          if (holdTimer) clearTimeout(holdTimer);
+          btnHold.classList.add("is-holding");
+          lblHold.textContent = "Удерживайте до заполнения контура...";
+          holdTimer = setTimeout(() => {
+            holdTimer = null;
+            btnHold.classList.remove("is-holding");
+            lblHold.textContent = "Удерживайте 1 сек для разблокировки";
+            toggleOled(false);
+          }, 900);
+        };
+
+        const cancelHold = () => {
+          if (holdTimer) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+          }
+          btnHold.classList.remove("is-holding");
+          lblHold.textContent = "Удерживайте 1 сек для разблокировки";
+        };
+
+        btnHold.addEventListener("pointerdown", startHold);
+        btnHold.addEventListener("pointerup", cancelHold);
+        btnHold.addEventListener("pointerleave", cancelHold);
+        btnHold.addEventListener("pointercancel", cancelHold);
+      }
+      bindOledHoldToUnlock();
+
+      // Глобальные горячие клавиши (Space, ArrowLeft, ArrowRight, Escape)
+      window.addEventListener("keydown", function (e) {
+        const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+        if (tag === "textarea" || tag === "input" || tag === "select") {
+          if (e.code === "Escape") {
+            toggleEditor(false);
+            toggleStudio(false);
+          }
+          return;
+        }
+
+        if (e.code === "Space") {
+          e.preventDefault();
+          togglePlay();
+        } else if (e.code === "ArrowLeft") {
+          e.preventDefault();
+          prevSentence();
+        } else if (e.code === "ArrowRight") {
+          e.preventDefault();
+          nextSentence();
+        } else if (e.code === "Escape") {
+          if (!document.getElementById("oledOverlay").hidden) toggleOled(false);
+          if (document.body.classList.contains("focus-mode")) toggleFocus();
+          toggleEditor(false);
+          toggleStudio(false);
+        }
+      });
+
+      function setupMediaSession() {
+        if (!("mediaSession" in navigator)) return;
+        try {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: DOCUMENTS.custom.title || "Рукопись",
+            artist: "AURA READER",
+            album: "Двухдековая нейростудия"
+          });
+          navigator.mediaSession.setActionHandler("play", () => togglePlay());
+          navigator.mediaSession.setActionHandler("pause", () => pauseReading());
+          navigator.mediaSession.setActionHandler("previoustrack", () => prevSentence());
+          navigator.mediaSession.setActionHandler("nexttrack", () => nextSentence());
+        } catch (_) {}
+      }
+
+      /* ----------------------------------------------------------------------
+         9. ПУБЛИЧНЫЙ API WINDOW.AURAAPP И ИНИЦИАЛИЗАЦИЯ СТУДИИ
+         ---------------------------------------------------------------------- */
+      window.AuraApp = {
+        togglePlay,
+        prev: prevSentence,
+        next: nextSentence,
+        stop: stopReading,
+        seekToIndex: (val) => seekToIndex(val, false),
+        clearAllText,
+        clearEditorArea,
+        pasteFromClipboardAndRead,
+        pasteIntoEditorArea,
+        toggleEditor,
+        saveEditorText,
+        importTextFile,
+        toggleStudio,
+        toggleFocus,
+        cycleTheme,
+        toggleOled,
+        previewSelectedVoice,
+        stopPreview,
+        onVoiceChange: function () {
+          preloadedForIndex = -1;
+          preloadedResolved = null;
+          saveAppState();
+          if (state === "PLAYING") startReading();
+        },
+        setRate: function (val) {
+          rate = parseFloat(val) || 0.95;
+          saveAppState();
+          if (state === "PLAYING") startReading();
+        },
+        setPitch: function (val) {
+          pitch = parseFloat(val) || 1.00;
+          const rPitch = document.getElementById("rangePitch");
+          document.getElementById("lblPitch").textContent = pitch.toFixed(2);
+          updateSliderFill(rPitch);
+          saveAppState();
+          if (state === "PLAYING") startReading();
+        },
+        setVolume: function (val) {
+          volume = parseFloat(val) || 1.0;
+          audioDeck.forEach(el => { el.volume = volume; });
+          previewAudio.volume = volume;
+          const rVol = document.getElementById("rangeVolume");
+          document.getElementById("lblVolume").textContent = Math.round(volume * 100) + "%";
+          updateSliderFill(rVol);
+          saveAppState();
+        },
+        setTrimOverlap: function (val) {
+          trimOverlapMs = parseInt(val, 10) || 0;
+          const rTrim = document.getElementById("rangeTrimOverlap");
+          document.getElementById("lblTrimOverlap").textContent = trimOverlapMs + " мс";
+          document.getElementById("metaEngineBadge").textContent = "PING-PONG БУФЕР · СРЕЗ СТЫКА " + trimOverlapMs + " МС";
+          updateSliderFill(rTrim);
+          if (state === "PLAYING") {
+            setUIState("PLAYING", `${getActiveDeckName()} · В ЭФИРЕ · СРЕЗ СТЫКА ${trimOverlapMs} МС`);
+          } else if (state === "IDLE") {
+            setUIState("IDLE", `${getActiveDeckName()} · ОЖИДАНИЕ · СРЕЗ СТЫКА ${trimOverlapMs} МС`);
+          }
+          saveAppState();
+        },
+        setFontSize: function (px) {
+          const size = parseInt(px, 10) || 21;
+          document.documentElement.style.setProperty("--reader-font-size", size + "px");
+          const rFont = document.getElementById("rangeFontSize");
+          document.getElementById("lblFontSize").textContent = size + "px";
+          updateSliderFill(rFont);
+          saveAppState();
+        },
+        setAutoScroll: function (checked) {
+          autoScroll = Boolean(checked);
+          saveAppState();
+        },
+        setSleepTimer: function (mins) {
+          if (sleepTimerId) clearInterval(sleepTimerId);
+          sleepTimerId = null;
+          const lbl = document.getElementById("lblSleepTimer");
+          document.querySelectorAll(".sleep-pill").forEach(btn => {
+            btn.classList.toggle("active", parseInt(btn.getAttribute("data-sleep"), 10) === mins);
+          });
+
+          if (!mins || mins <= 0) {
+            lbl.textContent = "Выкл";
+            return;
+          }
+          sleepRemainingSec = mins * 60;
+          const renderTime = () => {
+            const m = Math.floor(sleepRemainingSec / 60);
+            const s = sleepRemainingSec % 60;
+            lbl.textContent = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+          };
+          renderTime();
+
+          sleepTimerId = setInterval(() => {
+            sleepRemainingSec--;
+            if (sleepRemainingSec <= 0) {
+              clearInterval(sleepTimerId);
+              sleepTimerId = null;
+              lbl.textContent = "Пауза";
+              pauseReading();
+            } else {
+              renderTime();
+            }
+          }, 1000);
+        }
+      };
+
+      // Инициализация треков ползунков, состояния, голосов и первой отрисовки листа
+      ["rangePitch", "rangeVolume", "rangeTrimOverlap", "rangeFontSize", "dockProgressSlider"].forEach(id => {
+        updateSliderFill(document.getElementById(id));
+      });
+      loadAppState();
+      populateVoices();
+      parseAndRenderDocument(DOCUMENTS.custom.text, DOCUMENTS.custom.title);
+      updateDeckTelemetryUI(false);
+      updateLayoutOffsets();
+    })();
+  </script>
+</body>
+</html>
